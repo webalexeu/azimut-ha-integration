@@ -2,63 +2,26 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to your battery system",
-        "description": "Enter the connection details for your battery system",
+        "title": "Connect to Azen Energy System",
+        "description": "Enter the MQTT broker details and your device serial number.",
         "data": {
-          "host": "Host",
-          "port": "Port"
+          "host": "MQTT Broker Host",
+          "port": "MQTT Broker Port",
+          "serial": "Device Serial Number"
+        },
+        "data_description": {
+          "host": "The hostname or IP address of the MQTT broker",
+          "port": "The port of the MQTT broker (default: 1883)",
+          "serial": "The serial number of your Azen device (e.g., ABC123)"
         }
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect to the battery system",
-      "invalid_response": "Invalid response from the battery system",
+      "cannot_connect": "Failed to connect to the MQTT broker",
       "unknown": "Unexpected error"
     },
     "abort": {
       "already_configured": "Device is already configured"
     }
-  },
-  "options": {
-    "step": {
-      "init": {
-        "title": "Battery System Options",
-        "description": "Configure the update interval for your battery system",
-        "data": {
-          "scan_interval": "Update interval (seconds)"
-        }
-      }
-    }
-  },
-  "entity": {
-    "sensor": {
-      "battery_voltage": {
-        "name": "Battery DC Voltage"
-      },
-      "battery_current": {
-        "name": "Battery DC Current"
-      },
-      "battery_power": {
-        "name": "Battery DC Power"
-      },
-      "battery_ac_power": {
-        "name": "Battery AC Power"
-      },
-      "battery_efficiency": {
-        "name": "AC/DC Conversion Efficiency"
-      },
-      "battery_soc": {
-        "name": "Battery State of Charge"
-      },
-      "battery_temperature": {
-        "name": "Battery Temperature"
-      },
-      "energy_to_battery": {
-        "name": "Energy to Battery"
-      },
-      "energy_from_battery": {
-        "name": "Energy from Battery"
-      }
-    }
   }
-} 
+}

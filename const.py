@@ -1,50 +1,40 @@
-"""Constants for the Azimut Battery integration."""
+"""Constants for the Azen Energy integration."""
 
-DOMAIN = "azimut_battery"
+DOMAIN = "azen"
 
-# Default API endpoint for battery data
-API_ENDPOINT = "/api/battery/current"
+# MQTT Configuration
+MQTT_PORT = 1883
+MQTT_USE_TLS = False
+MQTT_KEEPALIVE = 60
 
-# Default scan interval in seconds
-DEFAULT_SCAN_INTERVAL = 30
+# Default expiration for sensors (seconds)
+DEFAULT_EXPIRE_AFTER = 300
 
-# Unit of measurement
-VOLT = "V"
-AMPERE = "A"
-WATT = "W"
-PERCENTAGE = "%"
-TEMP_CELSIUS = "°C"
+# Configuration keys
+CONF_SERIAL = "serial"
+
+# MQTT Topic patterns
+# Discovery topic: homeassistant/sensor/azen_{serial}/+/config
+# State topic: azen/{serial}/sensor/+/state
+DISCOVERY_TOPIC_PREFIX = "homeassistant/sensor"
+STATE_TOPIC_PREFIX = "azen"
+
+
+def get_discovery_topic(serial: str) -> str:
+    """Get the discovery topic pattern for a device serial."""
+    return f"{DISCOVERY_TOPIC_PREFIX}/azen_{serial}/+/config"
+
+
+def get_state_topic(serial: str) -> str:
+    """Get the state topic pattern for a device serial."""
+    return f"{STATE_TOPIC_PREFIX}/{serial}/sensor/+/state"
+
 
 # Icon mapping
+ICON_GRID = "mdi:transmission-tower"
 ICON_BATTERY = "mdi:battery"
+ICON_SOLAR = "mdi:solar-power"
+ICON_INVERTER = "mdi:power-plug"
+ICON_CONSUMPTION = "mdi:home-lightning-bolt"
 ICON_VOLTAGE = "mdi:flash"
-ICON_CURRENT = "mdi:current-ac"
-ICON_POWER = "mdi:power-plug"
-ICON_TEMPERATURE = "mdi:thermometer"
-ICON_EFFICIENCY = "mdi:flash-auto"
 ICON_ENERGY = "mdi:lightning-bolt"
-
-# Device class mapping (for Home Assistant)
-DEVICE_CLASS_BATTERY = "battery"
-DEVICE_CLASS_VOLTAGE = "voltage"
-DEVICE_CLASS_CURRENT = "current"
-DEVICE_CLASS_POWER = "power"
-DEVICE_CLASS_TEMPERATURE = "temperature"
-DEVICE_CLASS_ENERGY = "energy"
-
-# State class for sensors
-STATE_CLASS_MEASUREMENT = "measurement"
-STATE_CLASS_TOTAL_INCREASING = "total_increasing"
-
-# Attribute keys (updated to match new API structure)
-ATTR_BATTERY_VOLTAGE = "dc_voltage"
-ATTR_BATTERY_CURRENT = "dc_current"
-ATTR_BATTERY_POWER = "dc_power"
-ATTR_BATTERY_AC_POWER = "ac_power"
-ATTR_BATTERY_EFFICIENCY = "ac_dc_efficiency"
-ATTR_BATTERY_SOC = "soc"
-ATTR_BATTERY_TEMPERATURE = "temperature"
-ATTR_BATTERY_STATUS = "status"
-ATTR_UPDATED_AT = "updated_at"
-ATTR_ENERGY_TO_BATTERY = "energy_to_battery"
-ATTR_ENERGY_FROM_BATTERY = "energy_from_battery" 

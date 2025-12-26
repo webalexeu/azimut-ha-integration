@@ -1,83 +1,46 @@
-"""Test the Azimut Energy integration."""
-from unittest.mock import patch
+"""Test the Azen Energy integration."""
+from unittest.mock import AsyncMock, patch
 
 import pytest
-from homeassistant import config_entries
-from homeassistant.components.azimut_battery.const import DOMAIN
-from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.azimut_battery.config_flow import CannotConnect, InvalidResponse
+from custom_components.azen.const import CONF_SERIAL, DOMAIN
 
 
-async def test_form(hass: HomeAssistant) -> None:
-    """Test we get the form."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-    assert result["type"] == FlowResultType.FORM
-    assert result["errors"] is None
-
-    with patch(
-        "custom_components.azimut_battery.config_flow.validate_input",
-        return_value={"title": "Test Battery"},
-    ):
-        result2 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": "1.1.1.1",
-                "port": 8080,
-            },
-        )
-        await hass.async_block_till_done()
-
-    assert result2["type"] == FlowResultType.CREATE_ENTRY
-    assert result2["title"] == "Test Battery"
-    assert result2["data"] == {
-        "host": "1.1.1.1",
-        "port": 8080,
+async def test_setup_entry_success(hass):
+    """Test successful setup of config entry."""
+    entry = AsyncMock()
+    entry.data = {
+        "host": "192.168.1.100",
+        "port": 1883,
+        CONF_SERIAL: "ABC123",
     }
-
-
-async def test_form_cannot_connect(hass: HomeAssistant) -> None:
-    """Test we handle cannot connect error."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
+    entry.entry_id = "test_entry"
 
     with patch(
-        "custom_components.azimut_battery.config_flow.validate_input",
-        side_effect=CannotConnect,
+        "custom_components.azen.mqtt_client.AzenMQTTClient.connect",
+        return_value=True,
     ):
-        result2 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": "1.1.1.1",
-                "port": 8080,
-            },
-        )
+        from custom_components.azen import async_setup_entry
 
-    assert result2["type"] == FlowResultType.FORM
-    assert result2["errors"] == {"base": "cannot_connect"}
+        result = await async_setup_entry(hass, entry)
+        assert result is True
 
 
-async def test_form_invalid_response(hass: HomeAssistant) -> None:
-    """Test we handle invalid response error."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
+async def test_setup_entry_connection_failure(hass):
+    """Test setup failure when MQTT connection fails."""
+    entry = AsyncMock()
+    entry.data = {
+        "host": "192.168.1.100",
+        "port": 1883,
+        CONF_SERIAL: "ABC123",
+    }
+    entry.entry_id = "test_entry"
 
     with patch(
-        "custom_components.azimut_battery.config_flow.validate_input",
-        side_effect=InvalidResponse,
+        "custom_components.azen.mqtt_client.AzenMQTTClient.connect",
+        return_value=False,
     ):
-        result2 = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                "host": "1.1.1.1",
-                "port": 8080,
-            },
-        )
+        from custom_components.azen import async_setup_entry
 
-    assert result2["type"] == FlowResultType.FORM
-    assert result2["errors"] == {"base": "invalid_response"} 
+        result = await async_setup_entry(hass, entry)
+        assert result is False
