@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Validate manifest version
+        run: |
+          MANIFEST_VERSION=$(jq -r '.version' manifest.json)
+          TAG_VERSION="${{ steps.get_version.outputs.VERSION }}"
+          if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: manifest.json version ($MANIFEST_VERSION) does not match tag version ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "Version validated: $TAG_VERSION"
+
+      - name: Create release zip
+        run: |
+          mkdir -p azimut_energy
+          cp -r __init__.py config_flow.py const.py diagnostics.py manifest.json mqtt_client.py sensor.py strings.json translations azimut_energy/
+          zip -r azimut_energy.zip azimut_energy
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "CHANGELOG=Initial release" >> $GITHUB_OUTPUT
+          else
+            # Get commits between previous tag and current
+            COMMITS=$(git log --pretty=format:"- %s" $PREV_TAG..HEAD --no-merges)
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            echo "$COMMITS" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## Azimut Energy Integration v${{ steps.get_version.outputs.VERSION }}
+            
+            ### Installation
+            
+            #### HACS (Recommended)
+            1. Add this repository as a custom repository in HACS
+            2. Search for "Azimut Energy" and install
+            3. Restart Home Assistant
+            
+            #### Manual Installation
+            1. Download `azimut_energy.zip` from this release
+            2. Extract to `custom_components/azimut_energy/`
+            3. Restart Home Assistant
+            
+            ### Changes
+            ${{ steps.changelog.outputs.CHANGELOG }}
+          files: |
+            azimut_energy.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+  validate:
+    name: Validate Integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install homeassistant
+          pip install -r requirements_test.txt
+
+      - name: Validate manifest.json
+        run: |
+          python -c "
+          import json
+          with open('manifest.json') as f:
+              manifest = json.load(f)
+          required = ['domain', 'name', 'version', 'config_flow']
+          for key in required:
+              assert key in manifest, f'Missing required key: {key}'
+          print('manifest.json is valid')
+          "
+
+      - name: Check integration structure
+        run: |
+          required_files=(
+            "__init__.py"
+            "config_flow.py"
+            "const.py"
+            "manifest.json"
+            "sensor.py"
+            "strings.json"
+            "translations/en.json"
+          )
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required file: $file"
+              exit 1
+            fi
+          done
+          echo "All required files present"
+

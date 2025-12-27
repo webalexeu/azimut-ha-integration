@@ -1,4 +1,4 @@
-"""The Azen Energy integration."""
+"""The Azimut Energy integration."""
 from __future__ import annotations
 
 import asyncio
@@ -6,8 +6,9 @@ import logging
 from typing import Any, Callable
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import (
     CONF_SERIAL,
@@ -15,7 +16,7 @@ from .const import (
     MQTT_PORT,
     MQTT_USE_TLS,
 )
-from .mqtt_client import AzenMQTTClient
+from .mqtt_client import AzimutMQTTClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,21 +24,21 @@ PLATFORMS = ["sensor"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Azen Energy from a config entry."""
+    """Set up Azimut Energy from a config entry."""
     host = entry.data[CONF_HOST]
-    port = entry.data.get(CONF_PORT, MQTT_PORT)
     serial = entry.data.get(CONF_SERIAL, "")
 
-    coordinator = AzenMQTTCoordinator(
+    coordinator = AzimutMQTTCoordinator(
         hass,
         host=host,
-        port=port,
         serial=serial,
     )
 
     # Connect to MQTT broker
     if not await coordinator.async_connect():
-        return False
+        raise ConfigEntryNotReady(
+            f"Failed to connect to MQTT broker at {host}:{MQTT_PORT}"
+        )
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
@@ -48,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register update listener for config entry changes
     entry.async_on_unload(entry.add_update_listener(update_listener))
 
-    # Start listening for MQTT messages
+    # Start listening for MQTT messages (with auto-reconnect)
     coordinator.start_listening()
 
     return True
@@ -69,23 +70,23 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-class AzenMQTTCoordinator:
-    """Coordinator for Azen MQTT connection and message routing."""
+class AzimutMQTTCoordinator:
+    """Coordinator for Azimut MQTT connection and message routing."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         host: str,
-        port: int,
         serial: str,
     ) -> None:
         """Initialize the coordinator."""
         self.hass = hass
         self.serial = serial
+        self.host = host
 
-        self._mqtt_client = AzenMQTTClient(
+        self._mqtt_client = AzimutMQTTClient(
             host=host,
-            port=port,
+            port=MQTT_PORT,
             serial=serial,
             use_tls=MQTT_USE_TLS,
         )
@@ -93,22 +94,30 @@ class AzenMQTTCoordinator:
         self._listen_task: asyncio.Task | None = None
         self._discovery_callback: Callable[[dict[str, Any]], None] | None = None
         self._state_callback: Callable[[str, float], None] | None = None
+        self._connection_callback: Callable[[bool], None] | None = None
 
         # Set up MQTT client callbacks
         self._mqtt_client.set_discovery_callback(self._handle_discovery)
         self._mqtt_client.set_state_callback(self._handle_state)
+        self._mqtt_client.set_connection_callback(self._handle_connection_change)
 
     def set_discovery_callback(
-        self, callback: Callable[[dict[str, Any]], None]
+        self, callback_func: Callable[[dict[str, Any]], None]
     ) -> None:
         """Set callback for discovery messages from sensor platform."""
-        self._discovery_callback = callback
+        self._discovery_callback = callback_func
 
     def set_state_callback(
-        self, callback: Callable[[str, float], None]
+        self, callback_func: Callable[[str, float], None]
     ) -> None:
         """Set callback for state messages from sensor platform."""
-        self._state_callback = callback
+        self._state_callback = callback_func
+
+    def set_connection_callback(
+        self, callback_func: Callable[[bool], None]
+    ) -> None:
+        """Set callback for connection state changes."""
+        self._connection_callback = callback_func
 
     @callback
     def _handle_discovery(self, payload: dict[str, Any]) -> None:
@@ -121,6 +130,12 @@ class AzenMQTTCoordinator:
         """Handle state message from MQTT client."""
         if self._state_callback:
             self._state_callback(state_topic, value)
+
+    @callback
+    def _handle_connection_change(self, connected: bool) -> None:
+        """Handle connection state change from MQTT client."""
+        if self._connection_callback:
+            self._connection_callback(connected)
 
     async def async_connect(self) -> bool:
         """Connect to MQTT broker."""
@@ -139,9 +154,11 @@ class AzenMQTTCoordinator:
         await self._mqtt_client.disconnect()
 
     def start_listening(self) -> None:
-        """Start listening for MQTT messages."""
+        """Start listening for MQTT messages with auto-reconnect."""
         if self._listen_task is None:
-            self._listen_task = asyncio.create_task(self._mqtt_client.listen())
+            self._listen_task = asyncio.create_task(
+                self._mqtt_client.listen_with_reconnect()
+            )
 
     @property
     def is_connected(self) -> bool:

@@ -1,11 +1,12 @@
-"""Constants for the Azen Energy integration."""
+"""Constants for the Azimut Energy integration."""
 
-DOMAIN = "azen"
+DOMAIN = "azimut_energy"
 
 # MQTT Configuration
-MQTT_PORT = 1883
-MQTT_USE_TLS = False
+MQTT_PORT = 8883
+MQTT_USE_TLS = True
 MQTT_KEEPALIVE = 60
+MQTT_RECONNECT_INTERVAL = 30  # Seconds between reconnection attempts
 
 # Default expiration for sensors (seconds)
 DEFAULT_EXPIRE_AFTER = 300

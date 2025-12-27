@@ -3,29 +3,29 @@
     "flow_title": "Azimut Battery {serial}",
     "step": {
       "user": {
-        "title": "Connect to Azimut Energy System",
-        "description": "Enter the connection details for your Azimut device.",
+        "title": "Connect to Azimut Battery",
+        "description": "Enter the connection details for your Azimut Battery.",
         "data": {
           "host": "IP Address",
           "serial": "Device Serial Number"
         },
         "data_description": {
-          "host": "The IP address of your Azimut device",
+          "host": "The IP address of your Azimut Battery",
           "serial": "The serial number of your Azimut device (e.g., 504589, 365101, 024974)"
         }
       },
-      "zeroconf_confirm": {
-        "title": "Azimut Energy System Discovered",
+      "zeroconf_confirm": { 
+        "title": "Azimut Battery Discovered",
         "description": "A new Azimut device has been discovered.\n\n**Serial:** {serial}\n**IP Address:** {host}\n\nDo you want to add this device?"
       },
       "reconfigure": {
-        "title": "Reconfigure Azimut Energy System",
+        "title": "Reconfigure Azimut Battery",
         "description": "Update the connection settings for device {serial}.",
         "data": {
           "host": "IP Address"
         },
         "data_description": {
-          "host": "The IP address of your Azimut device"
+          "host": "The IP address of your Azimut Battery"
         }
       }
     },
@@ -41,7 +41,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Azimut Energy Options",
+        "title": "Azimut Battery Options",
         "description": "Update the connection settings.",
         "data": {
           "host": "IP Address"

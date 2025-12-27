@@ -1,5 +1,5 @@
 {
-  "domain": "azimut_ess",
+  "domain": "azimut_energy",
   "name": "Azimut Energy",
   "documentation": "https://github.com/azimut/azen-energy",
   "dependencies": [],
@@ -7,5 +7,6 @@
   "codeowners": ["@azimut"],
   "requirements": ["aiomqtt>=2.0.0"],
   "config_flow": true,
-  "iot_class": "local_push"
+  "iot_class": "local_push",
+  "zeroconf": ["_azimut-broker._tcp.local."]
 }

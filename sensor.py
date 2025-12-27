@@ -1,9 +1,9 @@
-"""Sensor platform for the Azen Energy integration."""
+"""Sensor platform for the Azimut Energy integration."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -19,10 +19,13 @@ from homeassistant.util import dt as dt_util
 
 from .const import CONF_SERIAL, DEFAULT_EXPIRE_AFTER, DOMAIN
 
+if TYPE_CHECKING:
+    from . import AzimutMQTTCoordinator
+
 _LOGGER = logging.getLogger(__name__)
 
 # Map string device classes to SensorDeviceClass enum
-DEVICE_CLASS_MAP = {
+DEVICE_CLASS_MAP: dict[str, SensorDeviceClass] = {
     "power": SensorDeviceClass.POWER,
     "energy": SensorDeviceClass.ENERGY,
     "voltage": SensorDeviceClass.VOLTAGE,
@@ -32,7 +35,7 @@ DEVICE_CLASS_MAP = {
 }
 
 # Map string state classes to SensorStateClass enum
-STATE_CLASS_MAP = {
+STATE_CLASS_MAP: dict[str, SensorStateClass] = {
     "measurement": SensorStateClass.MEASUREMENT,
     "total_increasing": SensorStateClass.TOTAL_INCREASING,
     "total": SensorStateClass.TOTAL,
@@ -44,12 +47,12 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Azen sensors from config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    """Set up Azimut sensors from config entry."""
+    coordinator: AzimutMQTTCoordinator = hass.data[DOMAIN][entry.entry_id]
     serial = entry.data.get(CONF_SERIAL, "")
 
     # Track created sensors by unique_id to avoid duplicates
-    created_sensors: dict[str, AzenSensor] = {}
+    created_sensors: dict[str, AzimutSensor] = {}
 
     @callback
     def handle_discovery(payload: dict[str, Any]) -> None:
@@ -65,7 +68,7 @@ async def async_setup_entry(
             return
 
         # Create the sensor entity
-        sensor = AzenSensor(
+        sensor = AzimutSensor(
             coordinator=coordinator,
             payload=payload,
             serial=serial,
@@ -86,19 +89,29 @@ async def async_setup_entry(
 
         _LOGGER.debug("No sensor found for state topic: %s", state_topic)
 
+    @callback
+    def handle_connection_change(connected: bool) -> None:
+        """Handle MQTT connection state change."""
+        if not connected:
+            # Mark all sensors as unavailable when connection is lost
+            for sensor in created_sensors.values():
+                sensor.set_connection_available(False)
+        # When connected, sensors will become available when they receive data
+
     # Register callbacks with coordinator
     coordinator.set_discovery_callback(handle_discovery)
     coordinator.set_state_callback(handle_state_update)
+    coordinator.set_connection_callback(handle_connection_change)
 
 
-class AzenSensor(SensorEntity):
-    """Azen sensor entity created from MQTT discovery."""
+class AzimutSensor(SensorEntity):
+    """Azimut sensor entity created from MQTT discovery."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: Any,
+        coordinator: AzimutMQTTCoordinator,
         payload: dict[str, Any],
         serial: str,
     ) -> None:
@@ -127,15 +140,17 @@ class AzenSensor(SensorEntity):
         self._expire_after = payload.get("expire_after", DEFAULT_EXPIRE_AFTER)
         self._last_update: datetime | None = None
         self._unsub_expire_check: Any = None
+        self._mqtt_connected = True
 
         # Device info from payload
         device_info = payload.get("device", {})
         identifiers = device_info.get("identifiers", [])
         if identifiers:
             # Convert list to set of tuples for HA
+            identifier = identifiers[0] if isinstance(identifiers[0], str) else identifiers[0]
             self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, identifiers[0]) if isinstance(identifiers[0], str) else identifiers[0]},
-                name=device_info.get("name", f"Azen {serial}"),
+                identifiers={(DOMAIN, identifier)},
+                name=device_info.get("name", f"Azimut Battery {serial}"),
                 manufacturer=device_info.get("manufacturer", "Azimut"),
                 model=device_info.get("model", "Azen Energy System"),
                 sw_version=device_info.get("sw_version"),
@@ -155,8 +170,17 @@ class AzenSensor(SensorEntity):
         """Update the sensor value from MQTT state message."""
         self._attr_native_value = value
         self._attr_available = True
+        self._mqtt_connected = True
         self._last_update = dt_util.utcnow()
         self.async_write_ha_state()
+
+    @callback
+    def set_connection_available(self, connected: bool) -> None:
+        """Set availability based on MQTT connection state."""
+        self._mqtt_connected = connected
+        if not connected and self._attr_available:
+            self._attr_available = False
+            self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass."""
@@ -180,8 +204,12 @@ class AzenSensor(SensorEntity):
 
     @callback
     def _check_expiration(self, now: datetime) -> None:
-        """Check if sensor has expired."""
+        """Check if sensor has expired due to no updates."""
         if self._last_update is None:
+            return
+
+        # Only check expiration if MQTT is connected
+        if not self._mqtt_connected:
             return
 
         if (now - self._last_update).total_seconds() > self._expire_after:
