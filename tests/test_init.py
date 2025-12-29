@@ -5,11 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from custom_components.azimut_energy.const import CONF_SERIAL, DOMAIN
+from custom_components.azimut_energy.const import DOMAIN
 
 
 async def test_setup_entry_success(
@@ -61,7 +60,10 @@ async def test_unload_entry(
         "custom_components.azimut_energy.AzimutMQTTClient",
         return_value=mock_mqtt_client,
     ):
-        from custom_components.azimut_energy import async_setup_entry, async_unload_entry
+        from custom_components.azimut_energy import (
+            async_setup_entry,
+            async_unload_entry,
+        )
 
         # Setup first
         with patch.object(

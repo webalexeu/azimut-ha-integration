@@ -22,7 +22,7 @@ jobs:
 
       - name: Validate manifest version
         run: |
-          MANIFEST_VERSION=$(jq -r '.version' manifest.json)
+          MANIFEST_VERSION=$(jq -r '.version' custom_components/azimut_energy/manifest.json)
           TAG_VERSION="${{ steps.get_version.outputs.VERSION }}"
           if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
             echo "Error: manifest.json version ($MANIFEST_VERSION) does not match tag version ($TAG_VERSION)"
@@ -32,8 +32,7 @@ jobs:
 
       - name: Create release zip
         run: |
-          mkdir -p azimut_energy
-          cp -r __init__.py config_flow.py const.py diagnostics.py manifest.json mqtt_client.py sensor.py strings.json translations azimut_energy/
+          cp -r custom_components/azimut_energy azimut_energy
           zip -r azimut_energy.zip azimut_energy
 
       - name: Generate changelog
@@ -101,7 +100,7 @@ jobs:
         run: |
           python -c "
           import json
-          with open('manifest.json') as f:
+          with open('custom_components/azimut_energy/manifest.json') as f:
               manifest = json.load(f)
           required = ['domain', 'name', 'version', 'config_flow']
           for key in required:
@@ -112,13 +111,13 @@ jobs:
       - name: Check integration structure
         run: |
           required_files=(
-            "__init__.py"
-            "config_flow.py"
-            "const.py"
-            "manifest.json"
-            "sensor.py"
-            "strings.json"
-            "translations/en.json"
+            "custom_components/azimut_energy/__init__.py"
+            "custom_components/azimut_energy/config_flow.py"
+            "custom_components/azimut_energy/const.py"
+            "custom_components/azimut_energy/manifest.json"
+            "custom_components/azimut_energy/sensor.py"
+            "custom_components/azimut_energy/strings.json"
+            "custom_components/azimut_energy/translations/en.json"
           )
           for file in "${required_files[@]}"; do
             if [ ! -f "$file" ]; then

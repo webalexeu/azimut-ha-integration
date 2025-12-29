@@ -1,8 +1,5 @@
 {
-  "name": "Azimut Battery",
-  "render_readme": true,
+  "name": "Azimut Energy",
   "homeassistant": "2024.1.0"
 }
-
-
 

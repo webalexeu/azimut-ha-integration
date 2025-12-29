@@ -14,6 +14,8 @@ python_files = "test_*.py"
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -28,7 +30,7 @@ ignore = [
     "B008",  # do not perform function calls in argument defaults
 ]
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["custom_components.azimut_energy"]
 
 [tool.black]
@@ -41,7 +43,7 @@ line_length = 88
 known_first_party = ["custom_components.azimut_energy"]
 
 [tool.coverage.run]
-source = ["."]
+source = ["custom_components"]
 omit = ["tests/*", "setup.py"]
 
 [tool.coverage.report]

@@ -88,7 +88,7 @@ jobs:
         run: |
           python -c "
           import json
-          with open('manifest.json') as f:
+          with open('custom_components/azimut_energy/manifest.json') as f:
               manifest = json.load(f)
           required = ['domain', 'name', 'version', 'config_flow']
           for key in required:
@@ -100,9 +100,9 @@ jobs:
         run: |
           python -c "
           import json
-          with open('strings.json') as f:
+          with open('custom_components/azimut_energy/strings.json') as f:
               strings = json.load(f)
-          with open('translations/en.json') as f:
+          with open('custom_components/azimut_energy/translations/en.json') as f:
               en = json.load(f)
           print('Translations are valid JSON')
           "
