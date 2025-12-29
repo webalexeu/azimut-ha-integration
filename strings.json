@@ -11,7 +11,7 @@
         },
         "data_description": {
           "host": "The IP address of your Azimut Battery",
-          "serial": "The serial number of your Azimut device (e.g., 504589, 365101, 024974)"
+          "serial": "The serial number of your Azimut device (found on the label on the side of the battery, e.g., 504589, 365101, 024974)"
         }
       },
       "zeroconf_confirm": { 

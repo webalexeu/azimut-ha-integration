@@ -31,7 +31,7 @@ async def test_client_initialization(mqtt_client: AzimutMQTTClient) -> None:
 
 
 async def test_connect_success(mqtt_client: AzimutMQTTClient) -> None:
-    """Test successful connection."""
+    """Test successful connection validation."""
     mock_aiomqtt_client = MagicMock()
     mock_aiomqtt_client.__aenter__ = AsyncMock(return_value=mock_aiomqtt_client)
     mock_aiomqtt_client.__aexit__ = AsyncMock(return_value=None)
@@ -43,7 +43,8 @@ async def test_connect_success(mqtt_client: AzimutMQTTClient) -> None:
         result = await mqtt_client.connect()
 
     assert result is True
-    assert mqtt_client.is_connected
+    # connect() is for validation only, it disconnects after
+    assert not mqtt_client.is_connected
     assert mock_aiomqtt_client.subscribe.call_count == 2  # Discovery + state topics
 
 
@@ -64,20 +65,14 @@ async def test_connect_failure(mqtt_client: AzimutMQTTClient) -> None:
 
 async def test_disconnect(mqtt_client: AzimutMQTTClient) -> None:
     """Test disconnection."""
-    mock_aiomqtt_client = MagicMock()
-    mock_aiomqtt_client.__aenter__ = AsyncMock(return_value=mock_aiomqtt_client)
-    mock_aiomqtt_client.__aexit__ = AsyncMock(return_value=None)
-    mock_aiomqtt_client.subscribe = AsyncMock()
+    # Manually set connected state for testing disconnect
+    mqtt_client._connected = True
+    mqtt_client._running = True
 
-    with patch("custom_components.azimut_energy.mqtt_client.aiomqtt.Client") as mock_client:
-        mock_client.return_value = mock_aiomqtt_client
-
-        await mqtt_client.connect()
-        assert mqtt_client.is_connected
-
-        await mqtt_client.disconnect()
+    await mqtt_client.disconnect()
 
     assert not mqtt_client.is_connected
+    assert not mqtt_client._running
 
 
 async def test_discovery_callback(mqtt_client: AzimutMQTTClient) -> None:
@@ -185,17 +180,17 @@ async def test_connection_callback(mqtt_client: AzimutMQTTClient) -> None:
 
     mqtt_client.set_connection_callback(connection_callback)
 
-    mock_aiomqtt_client = MagicMock()
-    mock_aiomqtt_client.__aenter__ = AsyncMock(return_value=mock_aiomqtt_client)
-    mock_aiomqtt_client.__aexit__ = AsyncMock(return_value=None)
-    mock_aiomqtt_client.subscribe = AsyncMock()
-
-    with patch("custom_components.azimut_energy.mqtt_client.aiomqtt.Client") as mock_client:
-        mock_client.return_value = mock_aiomqtt_client
-
-        await mqtt_client.connect()
-
+    # Test notify connected
+    mqtt_client._notify_connected()
     assert connection_states == [True]
+
+    # Test notify disconnected
+    mqtt_client._notify_disconnected()
+    assert connection_states == [True, False]
+
+    # Test that duplicate notifications are ignored
+    mqtt_client._notify_disconnected()
+    assert connection_states == [True, False]  # No change
 
 
 async def test_topic_patterns(mqtt_client: AzimutMQTTClient) -> None:

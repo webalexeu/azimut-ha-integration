@@ -12,12 +12,16 @@ import aiomqtt
 
 from .const import (
     MQTT_KEEPALIVE,
-    MQTT_RECONNECT_INTERVAL,
     get_discovery_topic,
     get_state_topic,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Reconnection settings
+INITIAL_RECONNECT_DELAY = 1  # Start with 1 second
+MAX_RECONNECT_DELAY = 30  # Max 30 seconds between retries
+MESSAGE_TIMEOUT = 120  # Consider connection dead if no message for 2 minutes
 
 
 class AzimutMQTTClient:
@@ -39,8 +43,8 @@ class AzimutMQTTClient:
         self._client: aiomqtt.Client | None = None
         self._running = False
         self._connected = False
-        self._reconnect_task: asyncio.Task | None = None
-        self._connection_lost_logged = False
+        self._reconnect_delay = INITIAL_RECONNECT_DELAY
+        self._last_message_time: float = 0
 
         # Callbacks for discovery and state messages
         self._discovery_callback: Callable[[dict[str, Any]], None] | None = None
@@ -94,24 +98,37 @@ class AzimutMQTTClient:
         tls_context.verify_mode = ssl.CERT_NONE
         return tls_context
 
+    def _notify_connected(self) -> None:
+        """Notify that connection is established."""
+        if not self._connected:
+            self._connected = True
+            self._reconnect_delay = INITIAL_RECONNECT_DELAY  # Reset on success
+            if self._connection_callback:
+                self._connection_callback(True)
+
+    def _notify_disconnected(self) -> None:
+        """Notify that connection is lost."""
+        if self._connected:
+            self._connected = False
+            if self._connection_callback:
+                self._connection_callback(False)
+
     async def connect(self) -> bool:
-        """Connect to MQTT broker."""
+        """Connect to MQTT broker (for initial validation only)."""
         try:
-            self._client = aiomqtt.Client(
+            client = aiomqtt.Client(
                 hostname=self.host,
                 port=self.port,
                 tls_context=self._create_tls_context(),
-                identifier=f"ha_azen_{self.serial}",
+                identifier=f"ha_azimut_{self.serial}",
                 keepalive=MQTT_KEEPALIVE,
             )
 
-            await self._client.__aenter__()
-            self._connected = True
-            self._connection_lost_logged = False
-
-            # Subscribe to discovery and state topics
-            await self._client.subscribe(self._discovery_topic)
-            await self._client.subscribe(self._state_topic)
+            await client.__aenter__()
+            
+            # Subscribe to test connection
+            await client.subscribe(self._discovery_topic)
+            await client.subscribe(self._state_topic)
 
             _LOGGER.info(
                 "Connected to MQTT broker at %s:%s for device %s",
@@ -119,34 +136,19 @@ class AzimutMQTTClient:
                 self.port,
                 self.serial,
             )
-            _LOGGER.debug("Subscribed to discovery topic: %s", self._discovery_topic)
-            _LOGGER.debug("Subscribed to state topic: %s", self._state_topic)
 
-            # Notify connection callback
-            if self._connection_callback:
-                self._connection_callback(True)
-
+            # Disconnect - we'll reconnect in listen_with_reconnect
+            await client.__aexit__(None, None, None)
             return True
 
         except Exception as err:
-            if not self._connection_lost_logged:
-                _LOGGER.error("Failed to connect to MQTT broker: %s", err)
-                self._connection_lost_logged = True
-            self._connected = False
+            _LOGGER.error("Failed to connect to MQTT broker: %s", err)
             return False
 
     async def disconnect(self) -> None:
         """Disconnect from MQTT broker."""
         self._running = False
-
-        # Cancel reconnect task if running
-        if self._reconnect_task and not self._reconnect_task.done():
-            self._reconnect_task.cancel()
-            try:
-                await self._reconnect_task
-            except asyncio.CancelledError:
-                pass
-            self._reconnect_task = None
+        self._notify_disconnected()
 
         if self._client:
             try:
@@ -155,72 +157,93 @@ class AzimutMQTTClient:
                 _LOGGER.debug("Error during MQTT disconnect: %s", err)
             finally:
                 self._client = None
-                self._connected = False
 
     async def listen_with_reconnect(self) -> None:
         """Listen for MQTT messages with automatic reconnection."""
         self._running = True
+        import time
 
         while self._running:
             try:
-                if not self._connected:
-                    if await self.connect():
-                        _LOGGER.info("MQTT connection restored")
-                    else:
-                        # Wait before retry, but check if we should stop
-                        for _ in range(MQTT_RECONNECT_INTERVAL):
-                            if not self._running:
-                                return
-                            await asyncio.sleep(1)
-                        continue
+                # Create new client for each connection attempt
+                self._client = aiomqtt.Client(
+                    hostname=self.host,
+                    port=self.port,
+                    tls_context=self._create_tls_context(),
+                    identifier=f"ha_azimut_{self.serial}",
+                    keepalive=MQTT_KEEPALIVE,
+                )
 
-                # Listen for messages
-                await self._listen_loop()
+                async with self._client:
+                    # Subscribe to topics
+                    await self._client.subscribe(self._discovery_topic)
+                    await self._client.subscribe(self._state_topic)
+
+                    _LOGGER.info(
+                        "MQTT connected to %s:%s for device %s",
+                        self.host,
+                        self.port,
+                        self.serial,
+                    )
+                    _LOGGER.debug("Subscribed to: %s", self._discovery_topic)
+                    _LOGGER.debug("Subscribed to: %s", self._state_topic)
+
+                    self._notify_connected()
+                    self._last_message_time = time.monotonic()
+
+                    # Listen for messages with timeout
+                    await self._listen_loop_with_timeout()
 
             except aiomqtt.MqttError as err:
-                self._connected = False
-                if self._connection_callback:
-                    self._connection_callback(False)
-
-                if not self._connection_lost_logged:
-                    _LOGGER.warning(
-                        "MQTT connection lost: %s. Reconnecting in %s seconds...",
-                        err,
-                        MQTT_RECONNECT_INTERVAL,
-                    )
-                    self._connection_lost_logged = True
-
-                # Clean up old client
-                if self._client:
-                    try:
-                        await self._client.__aexit__(None, None, None)
-                    except Exception:
-                        pass
-                    self._client = None
-
-                # Wait before reconnect
-                for _ in range(MQTT_RECONNECT_INTERVAL):
-                    if not self._running:
-                        return
-                    await asyncio.sleep(1)
+                self._notify_disconnected()
+                _LOGGER.warning(
+                    "MQTT connection error: %s. Reconnecting in %s seconds...",
+                    err,
+                    self._reconnect_delay,
+                )
 
             except asyncio.CancelledError:
                 _LOGGER.debug("MQTT listen task cancelled")
+                self._notify_disconnected()
                 return
 
             except Exception as err:
-                _LOGGER.error("Unexpected error in MQTT loop: %s", err)
-                self._connected = False
-                await asyncio.sleep(MQTT_RECONNECT_INTERVAL)
+                self._notify_disconnected()
+                _LOGGER.error(
+                    "Unexpected MQTT error: %s. Reconnecting in %s seconds...",
+                    err,
+                    self._reconnect_delay,
+                )
 
-    async def _listen_loop(self) -> None:
-        """Internal listen loop for MQTT messages."""
+            finally:
+                self._client = None
+
+            # Wait before reconnecting (with early exit check)
+            if self._running:
+                await self._sleep_with_check(self._reconnect_delay)
+                # Exponential backoff
+                self._reconnect_delay = min(
+                    self._reconnect_delay * 2, MAX_RECONNECT_DELAY
+                )
+
+    async def _sleep_with_check(self, seconds: float) -> None:
+        """Sleep for specified seconds, but check _running periodically."""
+        end_time = asyncio.get_event_loop().time() + seconds
+        while asyncio.get_event_loop().time() < end_time and self._running:
+            await asyncio.sleep(min(1.0, end_time - asyncio.get_event_loop().time()))
+
+    async def _listen_loop_with_timeout(self) -> None:
+        """Listen for messages with a timeout to detect dead connections."""
+        import time
+
         if not self._client:
-            raise RuntimeError("Not connected to MQTT broker")
+            return
 
         async for message in self._client.messages:
             if not self._running:
                 break
+
+            self._last_message_time = time.monotonic()
 
             topic = str(message.topic)
             try:
