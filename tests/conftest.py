@@ -12,6 +12,9 @@ import pytest
 
 from homeassistant.const import CONF_HOST
 
+# Import after module setup - see below
+from custom_components.azimut_energy.const import CONF_SERIAL, DOMAIN  # noqa: E402
+
 # Add the workspace root to Python path for imports
 workspace_root = Path(__file__).parent.parent
 if str(workspace_root) not in sys.path:
@@ -54,8 +57,6 @@ if "custom_components.azimut_energy" not in sys.modules:
         sys.modules["custom_components.azimut_energy.__init__"] = init_module
         init_spec.loader.exec_module(init_module)
         azimut_energy.async_setup_entry = init_module.async_setup_entry
-
-from custom_components.azimut_energy.const import CONF_SERIAL, DOMAIN
 
 
 @pytest.fixture
