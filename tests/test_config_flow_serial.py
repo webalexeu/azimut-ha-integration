@@ -77,7 +77,10 @@ async def test_form_with_all_zero_serial(
 
 async def test_serial_number_string_preservation(hass: HomeAssistant) -> None:
     """Test that serial numbers are always treated as strings, not integers."""
-    from custom_components.azimut_energy.const import get_discovery_topic, get_state_topic
+    from custom_components.azimut_energy.const import (
+        get_discovery_topic,
+        get_state_topic,
+    )
 
     # Serial with leading zeros
     serial_with_zeros = "007890"

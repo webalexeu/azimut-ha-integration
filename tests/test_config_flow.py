@@ -419,3 +419,193 @@ async def test_reconfigure_flow_connection_failure(hass: HomeAssistant) -> None:
 
     assert result2["type"] == FlowResultType.FORM
     assert result2["errors"] == {"base": "cannot_connect"}
+
+
+async def test_form_exception_handling(hass: HomeAssistant) -> None:
+    """Test exception handling in user form."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+
+    with patch(
+        "custom_components.azimut_energy.config_flow.AzimutMQTTClient"
+    ) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        # Raise exception during connect
+        mock_client.connect = AsyncMock(side_effect=Exception("Test exception"))
+        mock_client.disconnect = AsyncMock()
+
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "192.168.1.100",
+                CONF_SERIAL: "504589",
+            },
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "cannot_connect"}
+
+
+async def test_zeroconf_confirm_connection_failure(hass: HomeAssistant) -> None:
+    """Test connection failure (returns False) in zeroconf confirm."""
+    discovery_info = zeroconf.ZeroconfServiceInfo(
+        ip_address="192.168.1.100",
+        ip_addresses=["192.168.1.100"],
+        hostname="azen-504589.local.",
+        name="Zephyr Azimut Broker on azen-504589._azimut-broker._tcp.local.",
+        port=8883,
+        properties={},
+        type="_azimut-broker._tcp.local.",
+    )
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=discovery_info,
+    )
+
+    with patch(
+        "custom_components.azimut_energy.config_flow.AzimutMQTTClient"
+    ) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        # Connection fails (returns False, not exception)
+        mock_client.connect = AsyncMock(return_value=False)
+        mock_client.disconnect = AsyncMock()
+
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {},
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "cannot_connect"}
+
+
+async def test_zeroconf_confirm_exception_handling(hass: HomeAssistant) -> None:
+    """Test exception handling in zeroconf confirm."""
+    discovery_info = zeroconf.ZeroconfServiceInfo(
+        ip_address="192.168.1.100",
+        ip_addresses=["192.168.1.100"],
+        hostname="azen-504589.local.",
+        name="Zephyr Azimut Broker on azen-504589._azimut-broker._tcp.local.",
+        port=8883,
+        properties={},
+        type="_azimut-broker._tcp.local.",
+    )
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_ZEROCONF},
+        data=discovery_info,
+    )
+
+    with patch(
+        "custom_components.azimut_energy.config_flow.AzimutMQTTClient"
+    ) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        # Raise exception during connect
+        mock_client.connect = AsyncMock(side_effect=Exception("Test exception"))
+        mock_client.disconnect = AsyncMock()
+
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {},
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "cannot_connect"}
+
+
+async def test_reconfigure_missing_entry(hass: HomeAssistant) -> None:
+    """Test reconfigure flow with missing entry."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": "nonexistent_entry_id",
+        },
+    )
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_failed"
+
+
+async def test_reconfigure_exception_handling(hass: HomeAssistant) -> None:
+    """Test exception handling in reconfigure flow."""
+    entry = MockConfigEntry(
+        version=1,
+        minor_version=1,
+        domain=DOMAIN,
+        title="Azimut Battery 504589",
+        data={
+            CONF_HOST: "192.168.1.100",
+            CONF_SERIAL: "504589",
+        },
+        source=config_entries.SOURCE_USER,
+        unique_id="azimut_energy_504589",
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
+    )
+
+    with patch(
+        "custom_components.azimut_energy.config_flow.AzimutMQTTClient"
+    ) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        # Raise exception during connect
+        mock_client.connect = AsyncMock(side_effect=Exception("Test exception"))
+        mock_client.disconnect = AsyncMock()
+
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "192.168.1.200",
+            },
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "cannot_connect"}
+
+
+async def test_options_flow_exception_handling(hass: HomeAssistant) -> None:
+    """Test exception handling in options flow."""
+    entry = MockConfigEntry(
+        version=1,
+        minor_version=1,
+        domain=DOMAIN,
+        title="Azimut Battery 504589",
+        data={
+            CONF_HOST: "192.168.1.100",
+            CONF_SERIAL: "504589",
+        },
+        source=config_entries.SOURCE_USER,
+        unique_id="azimut_energy_504589",
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+
+    with patch(
+        "custom_components.azimut_energy.config_flow.AzimutMQTTClient"
+    ) as mock_client_class:
+        mock_client = mock_client_class.return_value
+        # Raise exception during connect
+        mock_client.connect = AsyncMock(side_effect=Exception("Test exception"))
+        mock_client.disconnect = AsyncMock()
+
+        result2 = await hass.config_entries.options.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "192.168.1.200",
+            },
+        )
+
+    assert result2["type"] == FlowResultType.FORM
+    assert result2["errors"] == {"base": "cannot_connect"}

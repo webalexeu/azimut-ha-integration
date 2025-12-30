@@ -8,9 +8,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.azimut_energy.const import CONF_SERIAL, DOMAIN  # noqa: I001
-from custom_components.azimut_energy.sensor import AzimutSensor  # noqa: I001
+from custom_components.azimut_energy.sensor import (  # noqa: I001
+    AzimutDiagnosticSensor,
+    AzimutSensor,
+)
 
 
 @pytest.fixture
@@ -95,8 +99,12 @@ async def test_sensor_creation_from_discovery(
 
     sensor = sensors[0]
     assert sensor.unique_id == "azen_ABC123_battery_soc"
-    assert not hasattr(sensor, "_attr_name") or sensor._attr_name is None  # Name not set when using translation_key
-    assert sensor.translation_key == "battery_soc"  # Translation key provides the name (HA best practice)
+    assert (
+        not hasattr(sensor, "_attr_name") or sensor._attr_name is None
+    )  # Name not set when using translation_key
+    assert (
+        sensor.translation_key == "battery_soc"
+    )  # Translation key provides the name (HA best practice)
     assert sensor.state_topic == "azen/ABC123/sensor/battery_soc/state"
 
 
@@ -445,8 +453,12 @@ async def test_diagnostic_sensor_properties(
 
     # Check properties
     assert sensor.unique_id == "azen_ABC123_reconnect_count"
-    assert not hasattr(sensor, "_attr_name") or sensor._attr_name is None  # Name not set when using translation_key
-    assert sensor.translation_key == "reconnect_count"  # Translation key provides the name (HA best practice)
+    assert (
+        not hasattr(sensor, "_attr_name") or sensor._attr_name is None
+    )  # Name not set when using translation_key
+    assert (
+        sensor.translation_key == "reconnect_count"
+    )  # Translation key provides the name (HA best practice)
     assert sensor.icon == "mdi:connection"
     assert sensor.entity_category == EntityCategory.DIAGNOSTIC
     assert sensor.available is True
@@ -579,3 +591,34 @@ async def test_translation_key_from_unique_id(
     payload["unique_id"] = "invalid_format"
     sensor = AzimutSensor(mock_coordinator, payload, "365102")
     assert not hasattr(sensor, "translation_key") or sensor.translation_key is None
+
+
+async def test_sensor_no_unique_id(
+    hass: HomeAssistant,
+    mock_coordinator: MagicMock,
+    sample_discovery_payload: dict,
+) -> None:
+    """Test sensor creation without unique_id uses name from payload."""
+    payload = sample_discovery_payload.copy()
+    del payload["unique_id"]
+
+    sensor = AzimutSensor(mock_coordinator, payload, "365102")
+    assert sensor.name == "Battery State of Charge"
+    assert (
+        not hasattr(sensor, "_attr_translation_key") or sensor.translation_key is None
+    )
+
+
+async def test_diagnostic_sensor_default_value(
+    hass: HomeAssistant,
+    mock_coordinator: MagicMock,
+) -> None:
+    """Test diagnostic sensor returns 0 by default."""
+    sensor = AzimutDiagnosticSensor(
+        coordinator=mock_coordinator,
+        serial="365102",
+        sensor_type="sensor_count",
+        name="Sensor Count",
+        icon="mdi:counter",
+    )
+    assert sensor.native_value == 0
