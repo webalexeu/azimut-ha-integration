@@ -61,10 +61,19 @@ venv.bak/
 
 # IDE
 .idea/
-.vscode/
+.vscode/settings.json
+.vscode/*.code-workspace
 *.swp
 *.swo
 *~
+
+# Dev container
+.devcontainer/.storage/
+.devcontainer/config/
+!.devcontainer/configuration.yaml
+!.devcontainer/automations.yaml
+!.devcontainer/scripts.yaml
+!.devcontainer/scenes.yaml
 
 # macOS
 .DS_Store
