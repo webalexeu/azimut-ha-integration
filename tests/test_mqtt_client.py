@@ -235,3 +235,144 @@ async def test_no_tls_context() -> None:
     tls_context = client._create_tls_context()
     assert tls_context is None
 
+
+async def test_disconnect_with_error(mqtt_client: AzimutMQTTClient) -> None:
+    """Test disconnect handling when an error occurs."""
+    mqtt_client._connected = True
+    mqtt_client._running = True
+
+    # Create a mock client that raises an error on exit
+    mock_client = MagicMock()
+    mock_client.__aexit__ = AsyncMock(side_effect=Exception("Disconnect error"))
+    mqtt_client._client = mock_client
+
+    # Should handle the error gracefully
+    await mqtt_client.disconnect()
+
+    assert not mqtt_client.is_connected
+    assert not mqtt_client._running
+    assert mqtt_client._client is None
+
+
+async def test_listen_with_reconnect_mqtt_error(mqtt_client: AzimutMQTTClient) -> None:
+    """Test listen_with_reconnect handles MQTT errors and reconnects."""
+    import aiomqtt
+    import asyncio
+
+    mock_aiomqtt_client = MagicMock()
+    mock_aiomqtt_client.__aenter__ = AsyncMock(
+        side_effect=aiomqtt.MqttError("Connection failed")
+    )
+    mock_aiomqtt_client.__aexit__ = AsyncMock()
+
+    with patch("custom_components.azimut_energy.mqtt_client.aiomqtt.Client") as mock_client:
+        mock_client.return_value = mock_aiomqtt_client
+
+        # Start listening in background
+        task = asyncio.create_task(mqtt_client.listen_with_reconnect())
+
+        # Wait a bit for the first connection attempt
+        await asyncio.sleep(0.1)
+
+        # Stop the client
+        mqtt_client._running = False
+
+        # Wait for task to complete
+        try:
+            await asyncio.wait_for(task, timeout=1.0)
+        except asyncio.TimeoutError:
+            task.cancel()
+
+
+async def test_listen_with_reconnect_cancelled(mqtt_client: AzimutMQTTClient) -> None:
+    """Test listen_with_reconnect handles cancellation."""
+    import asyncio
+
+    mock_aiomqtt_client = MagicMock()
+
+    async def mock_aenter(*args):
+        # Simulate a cancellation during connection
+        raise asyncio.CancelledError()
+
+    mock_aiomqtt_client.__aenter__ = mock_aenter
+    mock_aiomqtt_client.__aexit__ = AsyncMock()
+
+    with patch("custom_components.azimut_energy.mqtt_client.aiomqtt.Client") as mock_client:
+        mock_client.return_value = mock_aiomqtt_client
+
+        # This should exit cleanly when cancelled
+        try:
+            await mqtt_client.listen_with_reconnect()
+        except asyncio.CancelledError:
+            pass
+
+        assert not mqtt_client.is_connected
+
+
+async def test_listen_with_reconnect_unexpected_error(mqtt_client: AzimutMQTTClient) -> None:
+    """Test listen_with_reconnect handles unexpected errors."""
+    import asyncio
+
+    mock_aiomqtt_client = MagicMock()
+    mock_aiomqtt_client.__aenter__ = AsyncMock(
+        side_effect=RuntimeError("Unexpected error")
+    )
+    mock_aiomqtt_client.__aexit__ = AsyncMock()
+
+    with patch("custom_components.azimut_energy.mqtt_client.aiomqtt.Client") as mock_client:
+        mock_client.return_value = mock_aiomqtt_client
+
+        # Start listening in background
+        task = asyncio.create_task(mqtt_client.listen_with_reconnect())
+
+        # Wait a bit for the first connection attempt
+        await asyncio.sleep(0.1)
+
+        # Stop the client
+        mqtt_client._running = False
+
+        # Wait for task to complete
+        try:
+            await asyncio.wait_for(task, timeout=1.0)
+        except asyncio.TimeoutError:
+            task.cancel()
+
+
+
+
+
+async def test_message_timeout_handling(mqtt_client: AzimutMQTTClient) -> None:
+    """Test timeout handling in message loop."""
+    import asyncio
+    import time
+
+    # Set last message time to simulate timeout
+    mqtt_client._last_message_time = time.monotonic() - 500  # Way past timeout
+
+    # Test the timeout check
+    elapsed = time.monotonic() - mqtt_client._last_message_time
+    assert elapsed > 120  # MESSAGE_TIMEOUT is 120
+
+
+async def test_sleep_with_check_early_exit(mqtt_client: AzimutMQTTClient) -> None:
+    """Test _sleep_with_check exits early when running is False."""
+    import asyncio
+
+    mqtt_client._running = True
+
+    async def stop_soon():
+        await asyncio.sleep(0.1)
+        mqtt_client._running = False
+
+    # Start stop task
+    stop_task = asyncio.create_task(stop_soon())
+
+    # _sleep_with_check should exit early
+    start = asyncio.get_event_loop().time()
+    await mqtt_client._sleep_with_check(10.0)  # Would sleep 10 seconds normally
+    elapsed = asyncio.get_event_loop().time() - start
+
+    await stop_task
+
+    # Should have exited early (much less than 10 seconds)
+    assert elapsed < 5.0

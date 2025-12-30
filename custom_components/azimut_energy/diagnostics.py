@@ -6,6 +6,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from .const import CONF_SERIAL, DOMAIN, MQTT_PORT
 
@@ -20,7 +21,7 @@ async def async_get_config_entry_diagnostics(
     sensors_info = []
     if coordinator:
         # Get all entities for this config entry
-        entity_registry = hass.helpers.entity_registry.async_get(hass)
+        entity_registry = er.async_get(hass)
         entities = [
             entity
             for entity in entity_registry.entities.values()

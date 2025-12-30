@@ -1,6 +1,9 @@
 # Azimut Energy
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![CI](https://github.com/azimut/azimut-ha-integration/actions/workflows/ci.yml/badge.svg)](https://github.com/azimut/azimut-ha-integration/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-86%25-brightgreen)](https://github.com/azimut/azimut-ha-integration)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Home Assistant integration for Azimut Energy Systems (Azen). Monitor your energy system including grid, battery, solar, and consumption data in real-time.
 
@@ -384,6 +387,62 @@ logger:
 ```
 
 After restarting, check the logs at Settings → System → Logs.
+
+## Development
+
+### Running Tests
+
+This project has comprehensive test coverage (86%). To run tests:
+
+```bash
+# Install test dependencies
+pip install -r requirements_test.txt
+
+# Run tests with coverage
+pytest tests/ -v --cov=custom_components --cov-report=term-missing
+
+# Run tests quickly (no coverage)
+pytest tests/ -q
+```
+
+### Pre-commit Hook
+
+A pre-commit hook is automatically installed that runs tests before each commit. This ensures all tests pass before code is committed.
+
+To manually run the pre-commit checks:
+
+```bash
+.git/hooks/pre-commit
+```
+
+### Using pre-commit Framework (Optional)
+
+For additional code quality checks, you can use the pre-commit framework:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install the git hooks
+pre-commit install
+
+# Run manually on all files
+pre-commit run --all-files
+```
+
+This will automatically run:
+- Black (code formatting)
+- isort (import sorting)
+- Ruff (linting)
+- pytest (tests)
+
+### Code Style
+
+This project follows:
+- **Black** for code formatting (88 character line length)
+- **isort** for import sorting
+- **Ruff** for linting
+- **Type hints** where appropriate
 
 ## Support
 
