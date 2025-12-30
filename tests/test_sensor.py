@@ -9,8 +9,8 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from custom_components.azimut_energy.const import CONF_SERIAL, DOMAIN
-from custom_components.azimut_energy.sensor import AzimutSensor
+from custom_components.azimut_energy.const import CONF_SERIAL, DOMAIN  # noqa: I001
+from custom_components.azimut_energy.sensor import AzimutSensor  # noqa: I001
 
 
 @pytest.fixture

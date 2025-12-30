@@ -8,7 +8,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from custom_components.azimut_energy.const import DOMAIN
+from custom_components.azimut_energy.const import DOMAIN  # noqa: I001
 
 
 async def test_setup_entry_success(
