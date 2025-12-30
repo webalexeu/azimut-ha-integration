@@ -487,7 +487,9 @@ async def test_sensor_count_increments_on_discovery(
 
     # Get the sensor count diagnostic sensor
     diagnostic_sensors = add_entities_mock.call_args[0][0]
-    sensor_count_diag = next(s for s in diagnostic_sensors if s._sensor_type == "sensor_count")
+    sensor_count_diag = next(
+        s for s in diagnostic_sensors if s._sensor_type == "sensor_count"
+    )
 
     # Initial count should be 0
     assert sensor_count_diag.native_value == 0
