@@ -1,7 +1,7 @@
 {
   "domain": "azimut_energy",
   "name": "Azimut Energy",
-  "codeowners": ["@azimut"],
+  "codeowners": ["@Fllorent0D"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/azimut/azimut-ha-integration",
