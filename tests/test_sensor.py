@@ -507,3 +507,35 @@ async def test_sensor_count_increments_on_discovery(
 
     # Count should increment again
     assert sensor_count_diag.native_value == 2
+
+
+async def test_entity_category_from_discovery(
+    hass: HomeAssistant,
+    mock_coordinator: MagicMock,
+    sample_discovery_payload: dict,
+) -> None:
+    """Test entity category is properly set from discovery payload."""
+    from homeassistant.helpers.entity import EntityCategory
+
+    # Test diagnostic entity category
+    diagnostic_payload = sample_discovery_payload.copy()
+    diagnostic_payload["entity_category"] = "diagnostic"
+    diagnostic_payload["unique_id"] = "azen_ABC123_uptime"
+    diagnostic_payload["name"] = "Uptime"
+
+    sensor = AzimutSensor(mock_coordinator, diagnostic_payload, "ABC123")
+    assert sensor.entity_category == EntityCategory.DIAGNOSTIC
+
+    # Test config entity category
+    config_payload = sample_discovery_payload.copy()
+    config_payload["entity_category"] = "config"
+    config_payload["unique_id"] = "azen_ABC123_poll_interval"
+    config_payload["name"] = "Poll Interval"
+
+    sensor = AzimutSensor(mock_coordinator, config_payload, "ABC123")
+    assert sensor.entity_category == EntityCategory.CONFIG
+
+    # Test no entity category (regular sensor)
+    regular_payload = sample_discovery_payload.copy()
+    sensor = AzimutSensor(mock_coordinator, regular_payload, "ABC123")
+    assert sensor.entity_category is None

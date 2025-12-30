@@ -167,6 +167,13 @@ class AzimutSensor(SensorEntity):
         if state_class_str and state_class_str in STATE_CLASS_MAP:
             self._attr_state_class = STATE_CLASS_MAP[state_class_str]
 
+        # Entity category from discovery payload
+        entity_category_str = payload.get("entity_category")
+        if entity_category_str == "diagnostic":
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        elif entity_category_str == "config":
+            self._attr_entity_category = EntityCategory.CONFIG
+
         # Expiration for availability
         self._expire_after = payload.get("expire_after", DEFAULT_EXPIRE_AFTER)
         self._last_update: datetime | None = None
