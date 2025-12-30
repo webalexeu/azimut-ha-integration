@@ -54,6 +54,88 @@
     "error": {
       "cannot_connect": "Impossible de se connecter à l'appareil. Veuillez vérifier l'adresse IP et vous assurer que l'appareil est en ligne."
     }
+  },
+  "entity": {
+    "sensor": {
+      "battery_soc": {
+        "name": "État de charge de la batterie"
+      },
+      "battery_power": {
+        "name": "Puissance de la batterie"
+      },
+      "battery_voltage": {
+        "name": "Tension de la batterie"
+      },
+      "battery_capacity": {
+        "name": "Capacité de la batterie"
+      },
+      "grid_power": {
+        "name": "Puissance du réseau"
+      },
+      "grid_power_l1": {
+        "name": "Puissance du réseau L1"
+      },
+      "grid_power_l2": {
+        "name": "Puissance du réseau L2"
+      },
+      "grid_power_l3": {
+        "name": "Puissance du réseau L3"
+      },
+      "grid_voltage_l1": {
+        "name": "Tension du réseau L1"
+      },
+      "grid_voltage_l2": {
+        "name": "Tension du réseau L2"
+      },
+      "grid_voltage_l3": {
+        "name": "Tension du réseau L3"
+      },
+      "grid_energy_import": {
+        "name": "Énergie importée du réseau"
+      },
+      "grid_energy_export": {
+        "name": "Énergie exportée vers le réseau"
+      },
+      "pv_power": {
+        "name": "Puissance photovoltaïque"
+      },
+      "pv_energy": {
+        "name": "Énergie solaire totale"
+      },
+      "mppt_power": {
+        "name": "Puissance MPPT"
+      },
+      "mppt_energy": {
+        "name": "Énergie MPPT totale"
+      },
+      "inverter_power": {
+        "name": "Puissance de l'onduleur"
+      },
+      "consumption_power": {
+        "name": "Consommation totale"
+      },
+      "battery_energy_in": {
+        "name": "Énergie chargée dans la batterie"
+      },
+      "battery_energy_out": {
+        "name": "Énergie déchargée de la batterie"
+      },
+      "grid_energy_in": {
+        "name": "Énergie importée du réseau"
+      },
+      "grid_energy_out": {
+        "name": "Énergie exportée vers le réseau"
+      },
+      "reconnect_count": {
+        "name": "Nombre de reconnexions MQTT"
+      },
+      "total_messages": {
+        "name": "Messages MQTT reçus"
+      },
+      "sensor_count": {
+        "name": "Capteurs découverts"
+      }
+    }
   }
 }
 

@@ -54,6 +54,88 @@
     "error": {
       "cannot_connect": "Verbindung zum Gerät fehlgeschlagen. Bitte überprüfen Sie die IP-Adresse und stellen Sie sicher, dass das Gerät online ist."
     }
+  },
+  "entity": {
+    "sensor": {
+      "battery_soc": {
+        "name": "Batterieladezustand"
+      },
+      "battery_power": {
+        "name": "Batterieleistung"
+      },
+      "battery_voltage": {
+        "name": "Batteriespannung"
+      },
+      "battery_capacity": {
+        "name": "Batteriekapazität"
+      },
+      "grid_power": {
+        "name": "Netzleistung"
+      },
+      "grid_power_l1": {
+        "name": "Netzleistung L1"
+      },
+      "grid_power_l2": {
+        "name": "Netzleistung L2"
+      },
+      "grid_power_l3": {
+        "name": "Netzleistung L3"
+      },
+      "grid_voltage_l1": {
+        "name": "Netzspannung L1"
+      },
+      "grid_voltage_l2": {
+        "name": "Netzspannung L2"
+      },
+      "grid_voltage_l3": {
+        "name": "Netzspannung L3"
+      },
+      "grid_energy_import": {
+        "name": "Energieimport aus dem Netz"
+      },
+      "grid_energy_export": {
+        "name": "Energieexport ins Netz"
+      },
+      "pv_power": {
+        "name": "PV-Leistung"
+      },
+      "pv_energy": {
+        "name": "Solarenergie gesamt"
+      },
+      "mppt_power": {
+        "name": "MPPT-Leistung"
+      },
+      "mppt_energy": {
+        "name": "MPPT-Energie gesamt"
+      },
+      "inverter_power": {
+        "name": "Wechselrichterleistung"
+      },
+      "consumption_power": {
+        "name": "Gesamtverbrauch"
+      },
+      "battery_energy_in": {
+        "name": "Batterieenergie geladen"
+      },
+      "battery_energy_out": {
+        "name": "Batterieenergie entladen"
+      },
+      "grid_energy_in": {
+        "name": "Energieimport aus dem Netz"
+      },
+      "grid_energy_out": {
+        "name": "Energieexport ins Netz"
+      },
+      "reconnect_count": {
+        "name": "MQTT-Wiederverbindungen"
+      },
+      "total_messages": {
+        "name": "MQTT-Nachrichten empfangen"
+      },
+      "sensor_count": {
+        "name": "Erkannte Sensoren"
+      }
+    }
   }
 }
 

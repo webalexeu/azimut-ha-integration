@@ -152,8 +152,22 @@ class AzimutSensor(SensorEntity):
 
         # Extract fields from discovery payload
         self._attr_unique_id = payload.get("unique_id", "")
-        self._attr_name = payload.get("name", "Unknown Sensor")
         self._state_topic = payload.get("state_topic", "")
+
+        # Extract translation key from unique_id (e.g., "azen_123_battery_soc" -> "battery_soc")
+        # This allows entity names to be translated
+        # Following HA best practices: with has_entity_name=True, use ONLY translation_key (no name)
+        if self._attr_unique_id:
+            # Format: azen_{serial}_{sensor_type}
+            parts = self._attr_unique_id.split("_", 2)
+            if len(parts) >= 3:
+                self._attr_translation_key = parts[2]  # The sensor type part
+            else:
+                # Fallback: if unique_id doesn't match format, use name from payload
+                self._attr_name = payload.get("name", "Unknown Sensor")
+        else:
+            # No unique_id, use name from payload
+            self._attr_name = payload.get("name", "Unknown Sensor")
         self._attr_native_unit_of_measurement = payload.get("unit_of_measurement")
         self._attr_icon = payload.get("icon")
 
@@ -284,7 +298,8 @@ class AzimutDiagnosticSensor(SensorEntity):
         self._sensor_type = sensor_type
         self._device_id = f"azen_{serial}"
         self._attr_unique_id = f"{self._device_id}_{sensor_type}"
-        self._attr_name = name
+        self._attr_translation_key = sensor_type  # Use sensor_type as translation key
+        # Don't set name - let HA use translation_key following best practices
         self._attr_icon = icon
 
         # Device info

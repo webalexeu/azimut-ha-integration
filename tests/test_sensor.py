@@ -95,7 +95,8 @@ async def test_sensor_creation_from_discovery(
 
     sensor = sensors[0]
     assert sensor.unique_id == "azen_ABC123_battery_soc"
-    assert sensor.name == "Battery State of Charge"
+    assert not hasattr(sensor, "_attr_name") or sensor._attr_name is None  # Name not set when using translation_key
+    assert sensor.translation_key == "battery_soc"  # Translation key provides the name (HA best practice)
     assert sensor.state_topic == "azen/ABC123/sensor/battery_soc/state"
 
 
@@ -444,7 +445,8 @@ async def test_diagnostic_sensor_properties(
 
     # Check properties
     assert sensor.unique_id == "azen_ABC123_reconnect_count"
-    assert sensor.name == "MQTT Reconnect Count"
+    assert not hasattr(sensor, "_attr_name") or sensor._attr_name is None  # Name not set when using translation_key
+    assert sensor.translation_key == "reconnect_count"  # Translation key provides the name (HA best practice)
     assert sensor.icon == "mdi:connection"
     assert sensor.entity_category == EntityCategory.DIAGNOSTIC
     assert sensor.available is True
@@ -539,3 +541,41 @@ async def test_entity_category_from_discovery(
     regular_payload = sample_discovery_payload.copy()
     sensor = AzimutSensor(mock_coordinator, regular_payload, "ABC123")
     assert sensor.entity_category is None
+
+
+async def test_translation_key_from_unique_id(
+    hass: HomeAssistant,
+    mock_coordinator: MagicMock,
+    sample_discovery_payload: dict,
+) -> None:
+    """Test translation_key is extracted from unique_id."""
+    # Test battery_soc translation key
+    payload = sample_discovery_payload.copy()
+    payload["unique_id"] = "azen_365102_battery_soc"
+    sensor = AzimutSensor(mock_coordinator, payload, "365102")
+    assert sensor.translation_key == "battery_soc"
+
+    # Test grid_power_l1 translation key
+    payload["unique_id"] = "azen_365102_grid_power_l1"
+    sensor = AzimutSensor(mock_coordinator, payload, "365102")
+    assert sensor.translation_key == "grid_power_l1"
+
+    # Test pv_energy translation key
+    payload["unique_id"] = "azen_504589_pv_energy"
+    sensor = AzimutSensor(mock_coordinator, payload, "504589")
+    assert sensor.translation_key == "pv_energy"
+
+    # Test with serial containing leading zeros
+    payload["unique_id"] = "azen_007890_battery_power"
+    sensor = AzimutSensor(mock_coordinator, payload, "007890")
+    assert sensor.translation_key == "battery_power"
+
+    # Test diagnostic sensor translation key
+    payload["unique_id"] = "azen_365102_reconnect_count"
+    sensor = AzimutSensor(mock_coordinator, payload, "365102")
+    assert sensor.translation_key == "reconnect_count"
+
+    # Test no translation key for invalid unique_id format
+    payload["unique_id"] = "invalid_format"
+    sensor = AzimutSensor(mock_coordinator, payload, "365102")
+    assert not hasattr(sensor, "translation_key") or sensor.translation_key is None
