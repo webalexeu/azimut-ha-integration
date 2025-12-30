@@ -426,6 +426,7 @@ async def test_diagnostic_sensor_properties(
 ) -> None:
     """Test diagnostic sensor properties."""
     from homeassistant.helpers.entity import EntityCategory
+
     from custom_components.azimut_energy.sensor import AzimutDiagnosticSensor
 
     mqtt_client = MagicMock()
