@@ -60,6 +60,9 @@ class AzimutMQTTClient:
         self._state_callback: Callable[[str, float], None] | None = None
         self._connection_callback: Callable[[bool], None] | None = None
 
+        # TLS context - created lazily to avoid blocking in __init__
+        self._tls_context: ssl.SSLContext | None = None
+
         # Topic patterns
         self._discovery_topic = get_discovery_topic(serial)
         self._state_topic = get_state_topic(serial)
@@ -95,13 +98,23 @@ class AzimutMQTTClient:
         self._connection_callback = callback
 
     def _create_tls_context(self) -> ssl.SSLContext | None:
-        """Create TLS context if TLS is enabled."""
+        """Create TLS context if TLS is enabled (synchronous, for executor)."""
         if not self.use_tls:
             return None
         tls_context = ssl.create_default_context()
         tls_context.check_hostname = False
         tls_context.verify_mode = ssl.CERT_NONE
         return tls_context
+
+    async def _get_tls_context(self) -> ssl.SSLContext | None:
+        """Get or create TLS context asynchronously (non-blocking)."""
+        if self._tls_context is None:
+            # Run blocking SSL context creation in executor
+            loop = asyncio.get_running_loop()
+            self._tls_context = await loop.run_in_executor(
+                None, self._create_tls_context
+            )
+        return self._tls_context
 
     def _notify_connected(self) -> None:
         """Notify that connection is established."""
@@ -130,10 +143,13 @@ class AzimutMQTTClient:
     async def connect(self) -> bool:
         """Connect to MQTT broker (for initial validation only)."""
         try:
+            # Get TLS context asynchronously (non-blocking)
+            tls_context = await self._get_tls_context()
+
             client = aiomqtt.Client(
                 hostname=self.host,
                 port=self.port,
-                tls_context=self._create_tls_context(),
+                tls_context=tls_context,
                 identifier=f"ha_azimut_{self.serial}",
                 keepalive=MQTT_KEEPALIVE,
             )
@@ -177,13 +193,16 @@ class AzimutMQTTClient:
         self._running = True
         import time
 
+        # Get TLS context once before loop (non-blocking)
+        tls_context = await self._get_tls_context()
+
         while self._running:
             try:
                 # Create new client for each connection attempt
                 self._client = aiomqtt.Client(
                     hostname=self.host,
                     port=self.port,
-                    tls_context=self._create_tls_context(),
+                    tls_context=tls_context,
                     identifier=f"ha_azimut_{self.serial}",
                     keepalive=MQTT_KEEPALIVE,
                 )
