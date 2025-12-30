@@ -1,4 +1,5 @@
 """Test the Azimut Energy MQTT client."""
+
 from __future__ import annotations
 
 import json
@@ -36,7 +37,9 @@ async def test_connect_success(mqtt_client: AzimutMQTTClient) -> None:
     mock_aiomqtt_client.__aexit__ = AsyncMock(return_value=None)
     mock_aiomqtt_client.subscribe = AsyncMock()
 
-    with patch("custom_components.azimut_energy.mqtt_client.aiomqtt.Client") as mock_client:
+    with patch(
+        "custom_components.azimut_energy.mqtt_client.aiomqtt.Client"
+    ) as mock_client:
         mock_client.return_value = mock_aiomqtt_client
 
         result = await mqtt_client.connect()
@@ -127,9 +130,7 @@ async def test_state_callback(mqtt_client: AzimutMQTTClient) -> None:
     mqtt_client.set_state_callback(state_callback)
 
     # Simulate state message handling
-    mqtt_client._handle_state_message(
-        "azen/ABC123/sensor/battery_soc/state", "85.50"
-    )
+    mqtt_client._handle_state_message("azen/ABC123/sensor/battery_soc/state", "85.50")
 
     assert len(received_states) == 1
     assert received_states[0] == ("azen/ABC123/sensor/battery_soc/state", 85.50)
@@ -203,12 +204,8 @@ async def test_topic_patterns(mqtt_client: AzimutMQTTClient) -> None:
     )
 
     # State topic pattern
-    assert mqtt_client._state_pattern.match(
-        "azen/ABC123/sensor/battery_soc/state"
-    )
-    assert not mqtt_client._state_pattern.match(
-        "azen/OTHER/sensor/battery_soc/state"
-    )
+    assert mqtt_client._state_pattern.match("azen/ABC123/sensor/battery_soc/state")
+    assert not mqtt_client._state_pattern.match("azen/OTHER/sensor/battery_soc/state")
 
 
 async def test_tls_context_creation(mqtt_client: AzimutMQTTClient) -> None:
@@ -256,8 +253,9 @@ async def test_disconnect_with_error(mqtt_client: AzimutMQTTClient) -> None:
 
 async def test_listen_with_reconnect_mqtt_error(mqtt_client: AzimutMQTTClient) -> None:
     """Test listen_with_reconnect handles MQTT errors and reconnects."""
-    import aiomqtt
     import asyncio
+
+    import aiomqtt
 
     mock_aiomqtt_client = MagicMock()
     mock_aiomqtt_client.__aenter__ = AsyncMock(
@@ -265,7 +263,9 @@ async def test_listen_with_reconnect_mqtt_error(mqtt_client: AzimutMQTTClient) -
     )
     mock_aiomqtt_client.__aexit__ = AsyncMock()
 
-    with patch("custom_components.azimut_energy.mqtt_client.aiomqtt.Client") as mock_client:
+    with patch(
+        "custom_components.azimut_energy.mqtt_client.aiomqtt.Client"
+    ) as mock_client:
         mock_client.return_value = mock_aiomqtt_client
 
         # Start listening in background
@@ -280,7 +280,7 @@ async def test_listen_with_reconnect_mqtt_error(mqtt_client: AzimutMQTTClient) -
         # Wait for task to complete
         try:
             await asyncio.wait_for(task, timeout=1.0)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             task.cancel()
 
 
@@ -297,7 +297,9 @@ async def test_listen_with_reconnect_cancelled(mqtt_client: AzimutMQTTClient) ->
     mock_aiomqtt_client.__aenter__ = mock_aenter
     mock_aiomqtt_client.__aexit__ = AsyncMock()
 
-    with patch("custom_components.azimut_energy.mqtt_client.aiomqtt.Client") as mock_client:
+    with patch(
+        "custom_components.azimut_energy.mqtt_client.aiomqtt.Client"
+    ) as mock_client:
         mock_client.return_value = mock_aiomqtt_client
 
         # This should exit cleanly when cancelled
@@ -309,7 +311,9 @@ async def test_listen_with_reconnect_cancelled(mqtt_client: AzimutMQTTClient) ->
         assert not mqtt_client.is_connected
 
 
-async def test_listen_with_reconnect_unexpected_error(mqtt_client: AzimutMQTTClient) -> None:
+async def test_listen_with_reconnect_unexpected_error(
+    mqtt_client: AzimutMQTTClient,
+) -> None:
     """Test listen_with_reconnect handles unexpected errors."""
     import asyncio
 
@@ -319,7 +323,9 @@ async def test_listen_with_reconnect_unexpected_error(mqtt_client: AzimutMQTTCli
     )
     mock_aiomqtt_client.__aexit__ = AsyncMock()
 
-    with patch("custom_components.azimut_energy.mqtt_client.aiomqtt.Client") as mock_client:
+    with patch(
+        "custom_components.azimut_energy.mqtt_client.aiomqtt.Client"
+    ) as mock_client:
         mock_client.return_value = mock_aiomqtt_client
 
         # Start listening in background
@@ -334,16 +340,12 @@ async def test_listen_with_reconnect_unexpected_error(mqtt_client: AzimutMQTTCli
         # Wait for task to complete
         try:
             await asyncio.wait_for(task, timeout=1.0)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             task.cancel()
-
-
-
 
 
 async def test_message_timeout_handling(mqtt_client: AzimutMQTTClient) -> None:
     """Test timeout handling in message loop."""
-    import asyncio
     import time
 
     # Set last message time to simulate timeout

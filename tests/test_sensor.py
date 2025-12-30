@@ -1,11 +1,11 @@
 """Test the Azimut Energy sensor platform."""
+
 from __future__ import annotations
 
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
@@ -319,4 +319,3 @@ async def test_sensor_missing_unique_id(
 
     # Should not create sensor
     assert add_entities_mock.call_count == 0
-

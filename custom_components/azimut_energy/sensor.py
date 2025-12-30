@@ -1,4 +1,5 @@
 """Sensor platform for the Azimut Energy integration."""
+
 from __future__ import annotations
 
 import logging
@@ -147,7 +148,9 @@ class AzimutSensor(SensorEntity):
         identifiers = device_info.get("identifiers", [])
         if identifiers:
             # Convert list to set of tuples for HA
-            identifier = identifiers[0] if isinstance(identifiers[0], str) else identifiers[0]
+            identifier = (
+                identifiers[0] if isinstance(identifiers[0], str) else identifiers[0]
+            )
             self._attr_device_info = DeviceInfo(
                 identifiers={(DOMAIN, identifier)},
                 name=device_info.get("name", f"Azimut Battery {serial}"),

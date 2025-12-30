@@ -1,4 +1,5 @@
 """MQTT client for Azimut Energy integration."""
+
 from __future__ import annotations
 
 import asyncio
@@ -72,18 +73,14 @@ class AzimutMQTTClient:
         """Set callback for discovery messages."""
         self._discovery_callback = callback
 
-    def set_state_callback(
-        self, callback: Callable[[str, float], None]
-    ) -> None:
+    def set_state_callback(self, callback: Callable[[str, float], None]) -> None:
         """Set callback for state messages.
 
         Callback receives (state_topic, value).
         """
         self._state_callback = callback
 
-    def set_connection_callback(
-        self, callback: Callable[[bool], None]
-    ) -> None:
+    def set_connection_callback(self, callback: Callable[[bool], None]) -> None:
         """Set callback for connection state changes.
 
         Callback receives True when connected, False when disconnected.

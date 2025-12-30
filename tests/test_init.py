@@ -1,10 +1,10 @@
 """Test the Azimut Energy integration setup."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
@@ -181,7 +181,9 @@ async def test_coordinator_state_routing(
 
         # Set up a mock callback
         received = []
-        coordinator.set_state_callback(lambda topic, value: received.append((topic, value)))
+        coordinator.set_state_callback(
+            lambda topic, value: received.append((topic, value))
+        )
 
         # Simulate state message from MQTT client
         state_cb = mock_mqtt_client.set_state_callback.call_args[0][0]

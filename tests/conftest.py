@@ -1,17 +1,13 @@
 """Fixtures for Azimut Energy integration tests."""
+
 from __future__ import annotations
 
-import importlib.util
 import sys
-import types
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
-
 from homeassistant.const import CONF_HOST
 
 # Add the workspace root to Python path for imports
@@ -20,7 +16,10 @@ if str(workspace_root) not in sys.path:
     sys.path.insert(0, str(workspace_root))
 
 # Import after module setup
-from custom_components.azimut_energy.const import CONF_SERIAL, DOMAIN  # noqa: E402, I001
+from custom_components.azimut_energy.const import (  # noqa: E402, I001
+    CONF_SERIAL,
+    DOMAIN,
+)
 
 # Import pytest_homeassistant_custom_component fixtures
 pytest_plugins = "pytest_homeassistant_custom_component"

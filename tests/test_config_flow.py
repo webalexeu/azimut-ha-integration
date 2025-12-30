@@ -1,4 +1,5 @@
 """Test the Azimut Energy config flow."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -290,7 +291,10 @@ async def test_reconfigure_flow(hass: HomeAssistant) -> None:
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
-        context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
     )
 
     assert result["type"] == FlowResultType.FORM
@@ -393,7 +397,10 @@ async def test_reconfigure_flow_connection_failure(hass: HomeAssistant) -> None:
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
-        context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
     )
 
     with patch(

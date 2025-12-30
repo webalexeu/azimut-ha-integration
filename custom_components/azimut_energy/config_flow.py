@@ -1,4 +1,5 @@
 """Config flow for Azimut Energy integration."""
+
 from __future__ import annotations
 
 import logging
@@ -6,7 +7,6 @@ import re
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.components import zeroconf
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult, OptionsFlow
@@ -78,9 +78,7 @@ class AzimutConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Set unique ID to prevent duplicate discoveries
         await self.async_set_unique_id(f"azimut_energy_{self._discovered_serial}")
-        self._abort_if_unique_id_configured(
-            updates={CONF_HOST: self._discovered_host}
-        )
+        self._abort_if_unique_id_configured(updates={CONF_HOST: self._discovered_host})
 
         # Set the title for the discovery notification
         self.context["title_placeholders"] = {

@@ -1,4 +1,5 @@
 """The Azimut Energy integration."""
+
 from __future__ import annotations
 
 import asyncio
@@ -108,15 +109,11 @@ class AzimutMQTTCoordinator:
         """Set callback for discovery messages from sensor platform."""
         self._discovery_callback = callback_func
 
-    def set_state_callback(
-        self, callback_func: Callable[[str, float], None]
-    ) -> None:
+    def set_state_callback(self, callback_func: Callable[[str, float], None]) -> None:
         """Set callback for state messages from sensor platform."""
         self._state_callback = callback_func
 
-    def set_connection_callback(
-        self, callback_func: Callable[[bool], None]
-    ) -> None:
+    def set_connection_callback(self, callback_func: Callable[[bool], None]) -> None:
         """Set callback for connection state changes."""
         self._connection_callback = callback_func
 
