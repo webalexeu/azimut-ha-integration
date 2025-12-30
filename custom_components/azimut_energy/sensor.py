@@ -13,7 +13,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
@@ -55,6 +55,33 @@ async def async_setup_entry(
     # Track created sensors by unique_id to avoid duplicates
     created_sensors: dict[str, AzimutSensor] = {}
 
+    # Create diagnostic sensors
+    sensor_count_diag = AzimutDiagnosticSensor(
+        coordinator=coordinator,
+        serial=serial,
+        sensor_type="sensor_count",
+        name="Discovered Sensors",
+        icon="mdi:counter",
+    )
+    diagnostic_sensors = [
+        AzimutDiagnosticSensor(
+            coordinator=coordinator,
+            serial=serial,
+            sensor_type="reconnect_count",
+            name="MQTT Reconnect Count",
+            icon="mdi:connection",
+        ),
+        AzimutDiagnosticSensor(
+            coordinator=coordinator,
+            serial=serial,
+            sensor_type="total_messages",
+            name="MQTT Messages Received",
+            icon="mdi:message-processing",
+        ),
+        sensor_count_diag,
+    ]
+    async_add_entities(diagnostic_sensors)
+
     @callback
     def handle_discovery(payload: dict[str, Any]) -> None:
         """Handle discovery message and create sensor."""
@@ -75,6 +102,9 @@ async def async_setup_entry(
             serial=serial,
         )
         created_sensors[unique_id] = sensor
+
+        # Update sensor count
+        sensor_count_diag.increment_sensor_count()
 
         # Add the entity
         async_add_entities([sensor])
@@ -153,7 +183,7 @@ class AzimutSensor(SensorEntity):
             )
             self._attr_device_info = DeviceInfo(
                 identifiers={(DOMAIN, identifier)},
-                name=device_info.get("name", f"Azimut Battery {serial}"),
+                name=device_info.get("name", f"Azen {serial}"),
                 manufacturer=device_info.get("manufacturer", "Azimut"),
                 model=device_info.get("model", "Azen Energy System"),
                 sw_version=device_info.get("sw_version"),
@@ -224,3 +254,83 @@ class AzimutSensor(SensorEntity):
                     self._attr_unique_id,
                     self._expire_after,
                 )
+
+
+class AzimutDiagnosticSensor(SensorEntity):
+    """Diagnostic sensor for Azimut integration statistics."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_state_class = SensorStateClass.TOTAL
+
+    def __init__(
+        self,
+        coordinator: AzimutMQTTCoordinator,
+        serial: str,
+        sensor_type: str,
+        name: str,
+        icon: str,
+    ) -> None:
+        """Initialize the diagnostic sensor."""
+        self._coordinator = coordinator
+        self._serial = serial
+        self._sensor_type = sensor_type
+        self._device_id = f"azen_{serial}"
+        self._attr_unique_id = f"{self._device_id}_{sensor_type}"
+        self._attr_name = name
+        self._attr_icon = icon
+
+        # Device info
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=f"Azen {serial}",
+            manufacturer="Azimut",
+            model="Azen Energy System",
+        )
+
+        # Track sensor count for sensor_count type
+        self._sensor_count = 0
+
+    @property
+    def available(self) -> bool:
+        """Return True as diagnostic sensors should always be available."""
+        return True
+
+    @property
+    def native_value(self) -> int:
+        """Return the state of the sensor."""
+        mqtt_client = self._coordinator.mqtt_client
+
+        if self._sensor_type == "reconnect_count":
+            return mqtt_client.reconnect_count
+        elif self._sensor_type == "total_messages":
+            return mqtt_client.total_messages_received
+        elif self._sensor_type == "sensor_count":
+            return self._sensor_count
+
+        return 0
+
+    def increment_sensor_count(self) -> None:
+        """Increment the sensor count."""
+        if self._sensor_type == "sensor_count":
+            self._sensor_count += 1
+            # Only write state if entity has been added to hass
+            if self.hass is not None:
+                self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Run when entity is added to hass."""
+        await super().async_added_to_hass()
+
+        # Set up periodic update for MQTT stats
+        if self._sensor_type in ("reconnect_count", "total_messages"):
+            async_track_time_interval(
+                self.hass,
+                self._async_update,
+                timedelta(seconds=30),
+            )
+
+    @callback
+    def _async_update(self, now: datetime) -> None:
+        """Update the sensor value."""
+        self.async_write_ha_state()

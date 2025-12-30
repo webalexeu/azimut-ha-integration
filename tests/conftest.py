@@ -57,6 +57,16 @@ def mock_mqtt_client() -> Generator[MagicMock, None, None]:
         mock_client.set_discovery_callback = MagicMock()
         mock_client.set_state_callback = MagicMock()
         mock_client.set_connection_callback = MagicMock()
+        # Statistics properties
+        mock_client.connection_count = 1
+        mock_client.reconnect_count = 0
+        mock_client.total_messages_received = 0
+        mock_client.last_message_time = 0.0
+        mock_client.last_connect_time = 1234567890.0
+        mock_client.last_disconnect_time = None
+        mock_client.host = "192.168.1.100"
+        mock_client.port = 8883
+        mock_client.use_tls = True
         yield mock_client
 
 

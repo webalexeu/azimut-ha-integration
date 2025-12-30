@@ -378,3 +378,89 @@ async def test_sleep_with_check_early_exit(mqtt_client: AzimutMQTTClient) -> Non
 
     # Should have exited early (much less than 10 seconds)
     assert elapsed < 5.0
+
+
+async def test_statistics_initialization(mqtt_client: AzimutMQTTClient) -> None:
+    """Test that statistics are initialized correctly."""
+    assert mqtt_client.connection_count == 0
+    assert mqtt_client.reconnect_count == 0
+    assert mqtt_client.total_messages_received == 0
+    assert mqtt_client.last_message_time == 0.0
+    assert mqtt_client.last_connect_time is None
+    assert mqtt_client.last_disconnect_time is None
+
+
+async def test_connection_statistics_tracking(mqtt_client: AzimutMQTTClient) -> None:
+    """Test connection statistics are tracked correctly."""
+    import time
+
+    # Initial state
+    assert mqtt_client.connection_count == 0
+    assert mqtt_client.reconnect_count == 0
+
+    # First connection
+    mqtt_client._notify_connected()
+    assert mqtt_client.connection_count == 1
+    assert mqtt_client.reconnect_count == 0
+    assert mqtt_client.last_connect_time is not None
+    assert mqtt_client.is_connected is True
+
+    # Disconnect
+    mqtt_client._notify_disconnected()
+    assert mqtt_client.last_disconnect_time is not None
+    assert mqtt_client.is_connected is False
+
+    # Second connection (should count as reconnect)
+    time.sleep(0.01)  # Small delay to ensure different timestamps
+    mqtt_client._notify_connected()
+    assert mqtt_client.connection_count == 2
+    assert mqtt_client.reconnect_count == 1  # Second connection counts as reconnect
+
+
+async def test_message_counter(mqtt_client: AzimutMQTTClient) -> None:
+    """Test message counter increments."""
+    assert mqtt_client.total_messages_received == 0
+
+    # Simulate receiving messages by directly incrementing
+    # (normally done in _listen_loop_with_timeout)
+    mqtt_client._total_messages_received += 1
+    assert mqtt_client.total_messages_received == 1
+
+    mqtt_client._total_messages_received += 1
+    assert mqtt_client.total_messages_received == 2
+
+
+async def test_statistics_properties(mqtt_client: AzimutMQTTClient) -> None:
+    """Test all statistics properties are accessible."""
+    import time
+
+    # Set some values
+    mqtt_client._connection_count = 5
+    mqtt_client._reconnect_count = 3
+    mqtt_client._total_messages_received = 150
+    mqtt_client._last_message_time = time.monotonic()
+    mqtt_client._last_connect_time = time.time()
+    mqtt_client._last_disconnect_time = time.time() - 100
+
+    # Verify properties return correct values
+    assert mqtt_client.connection_count == 5
+    assert mqtt_client.reconnect_count == 3
+    assert mqtt_client.total_messages_received == 150
+    assert mqtt_client.last_message_time > 0
+    assert mqtt_client.last_connect_time is not None
+    assert mqtt_client.last_disconnect_time is not None
+
+
+async def test_connection_tracking_edge_cases(mqtt_client: AzimutMQTTClient) -> None:
+    """Test connection tracking edge cases."""
+    # Multiple connect notifications should only count once
+    mqtt_client._notify_connected()
+    first_count = mqtt_client.connection_count
+    mqtt_client._notify_connected()  # Duplicate notification
+    assert mqtt_client.connection_count == first_count  # No change
+
+    # Multiple disconnect notifications should only count once
+    mqtt_client._notify_disconnected()
+    first_disconnect_time = mqtt_client.last_disconnect_time
+    mqtt_client._notify_disconnected()  # Duplicate notification
+    assert mqtt_client.last_disconnect_time == first_disconnect_time  # No change

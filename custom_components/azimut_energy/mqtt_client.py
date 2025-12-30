@@ -48,6 +48,13 @@ class AzimutMQTTClient:
         self._reconnect_delay = INITIAL_RECONNECT_DELAY
         self._last_message_time: float = 0
 
+        # Connection statistics
+        self._connection_count = 0
+        self._reconnect_count = 0
+        self._last_connect_time: float | None = None
+        self._last_disconnect_time: float | None = None
+        self._total_messages_received = 0
+
         # Callbacks for discovery and state messages
         self._discovery_callback: Callable[[dict[str, Any]], None] | None = None
         self._state_callback: Callable[[str, float], None] | None = None
@@ -99,15 +106,24 @@ class AzimutMQTTClient:
     def _notify_connected(self) -> None:
         """Notify that connection is established."""
         if not self._connected:
+            import time
+
             self._connected = True
             self._reconnect_delay = INITIAL_RECONNECT_DELAY  # Reset on success
+            self._last_connect_time = time.time()
+            self._connection_count += 1
+            if self._connection_count > 1:
+                self._reconnect_count += 1
             if self._connection_callback:
                 self._connection_callback(True)
 
     def _notify_disconnected(self) -> None:
         """Notify that connection is lost."""
         if self._connected:
+            import time
+
             self._connected = False
+            self._last_disconnect_time = time.time()
             if self._connection_callback:
                 self._connection_callback(False)
 
@@ -244,6 +260,8 @@ class AzimutMQTTClient:
             self._last_message_time = time.monotonic()
 
             topic = str(message.topic)
+            self._total_messages_received += 1
+
             try:
                 payload = message.payload.decode()
             except UnicodeDecodeError:
@@ -313,6 +331,36 @@ class AzimutMQTTClient:
     def is_connected(self) -> bool:
         """Return connection status."""
         return self._connected
+
+    @property
+    def connection_count(self) -> int:
+        """Return total number of connections made."""
+        return self._connection_count
+
+    @property
+    def reconnect_count(self) -> int:
+        """Return number of reconnections."""
+        return self._reconnect_count
+
+    @property
+    def last_connect_time(self) -> float | None:
+        """Return timestamp of last connection."""
+        return self._last_connect_time
+
+    @property
+    def last_disconnect_time(self) -> float | None:
+        """Return timestamp of last disconnection."""
+        return self._last_disconnect_time
+
+    @property
+    def last_message_time(self) -> float:
+        """Return timestamp of last message received."""
+        return self._last_message_time
+
+    @property
+    def total_messages_received(self) -> int:
+        """Return total number of MQTT messages received."""
+        return self._total_messages_received
 
     # Keep old method for backwards compatibility
     async def listen(self) -> None:

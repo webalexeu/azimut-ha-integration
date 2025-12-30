@@ -22,7 +22,7 @@ from .mqtt_client import AzimutMQTTClient
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "binary_sensor"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -162,3 +162,8 @@ class AzimutMQTTCoordinator:
     def is_connected(self) -> bool:
         """Return connection status."""
         return self._mqtt_client.is_connected
+
+    @property
+    def mqtt_client(self) -> AzimutMQTTClient:
+        """Return the MQTT client for accessing statistics."""
+        return self._mqtt_client

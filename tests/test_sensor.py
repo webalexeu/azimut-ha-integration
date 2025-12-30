@@ -59,6 +59,12 @@ async def test_sensor_creation_from_discovery(
 
     hass.data[DOMAIN] = {entry.entry_id: mock_coordinator}
 
+    # Add mqtt_client to coordinator
+    mqtt_client = MagicMock()
+    mqtt_client.reconnect_count = 0
+    mqtt_client.total_messages_received = 0
+    mock_coordinator.mqtt_client = mqtt_client
+
     # Capture the callbacks
     callbacks = {}
 
@@ -81,9 +87,10 @@ async def test_sensor_creation_from_discovery(
     # Simulate discovery message
     callbacks["discovery"](sample_discovery_payload)
 
-    # Verify sensor was created
-    assert add_entities_mock.call_count == 1
-    sensors = add_entities_mock.call_args[0][0]
+    # Verify sensor was created (2 calls: 1 for diagnostic sensors, 1 for discovered sensor)
+    assert add_entities_mock.call_count == 2
+    # Second call contains the discovered sensor
+    sensors = add_entities_mock.call_args_list[1][0][0]
     assert len(sensors) == 1
 
     sensor = sensors[0]
@@ -132,6 +139,12 @@ async def test_sensor_duplicate_discovery(
 
     hass.data[DOMAIN] = {entry.entry_id: mock_coordinator}
 
+    # Add mqtt_client to coordinator
+    mqtt_client = MagicMock()
+    mqtt_client.reconnect_count = 0
+    mqtt_client.total_messages_received = 0
+    mock_coordinator.mqtt_client = mqtt_client
+
     callbacks = {}
     mock_coordinator.set_discovery_callback.side_effect = lambda cb: callbacks.update(
         {"discovery": cb}
@@ -146,8 +159,8 @@ async def test_sensor_duplicate_discovery(
     callbacks["discovery"](sample_discovery_payload)
     callbacks["discovery"](sample_discovery_payload)
 
-    # Should only create one sensor
-    assert add_entities_mock.call_count == 1
+    # Should only create one discovered sensor (2 calls total: 1 for diagnostic, 1 for discovered)
+    assert add_entities_mock.call_count == 2
 
 
 async def test_sensor_state_routing(
@@ -314,8 +327,180 @@ async def test_sensor_missing_unique_id(
     add_entities_mock = MagicMock()
     await async_setup_entry(hass, entry, add_entities_mock)
 
-    # Discovery without unique_id
+    # Discovery without unique_id (second call since first creates diagnostic sensors)
     callbacks["discovery"]({"name": "Test", "state_topic": "test"})
 
-    # Should not create sensor
-    assert add_entities_mock.call_count == 0
+    # Should only have diagnostic sensors, not the invalid one
+    assert add_entities_mock.call_count == 1
+
+
+async def test_diagnostic_sensors_created(
+    hass: HomeAssistant,
+    mock_coordinator: MagicMock,
+) -> None:
+    """Test that diagnostic sensors are created on setup."""
+    from custom_components.azimut_energy.sensor import async_setup_entry
+
+    entry = MagicMock()
+    entry.data = {CONF_SERIAL: "ABC123"}
+    entry.entry_id = "test_entry"
+
+    hass.data[DOMAIN] = {entry.entry_id: mock_coordinator}
+
+    # Add mqtt_client to coordinator
+    mqtt_client = MagicMock()
+    mqtt_client.reconnect_count = 2
+    mqtt_client.total_messages_received = 150
+    mock_coordinator.mqtt_client = mqtt_client
+
+    mock_coordinator.set_discovery_callback.side_effect = lambda cb: None
+    mock_coordinator.set_state_callback.side_effect = lambda cb: None
+    mock_coordinator.set_connection_callback.side_effect = lambda cb: None
+
+    add_entities_mock = MagicMock()
+    await async_setup_entry(hass, entry, add_entities_mock)
+
+    # Verify diagnostic sensors were created
+    assert add_entities_mock.call_count == 1
+    sensors = add_entities_mock.call_args[0][0]
+    assert len(sensors) == 3
+
+    # Check sensor types
+    sensor_types = [s._sensor_type for s in sensors]
+    assert "reconnect_count" in sensor_types
+    assert "total_messages" in sensor_types
+    assert "sensor_count" in sensor_types
+
+
+async def test_diagnostic_sensor_values(
+    hass: HomeAssistant,
+    mock_coordinator: MagicMock,
+) -> None:
+    """Test diagnostic sensor values."""
+    from custom_components.azimut_energy.sensor import AzimutDiagnosticSensor
+
+    # Setup mqtt_client
+    mqtt_client = MagicMock()
+    mqtt_client.reconnect_count = 3
+    mqtt_client.total_messages_received = 250
+    mock_coordinator.mqtt_client = mqtt_client
+
+    # Test reconnect count sensor
+    reconnect_sensor = AzimutDiagnosticSensor(
+        coordinator=mock_coordinator,
+        serial="ABC123",
+        sensor_type="reconnect_count",
+        name="MQTT Reconnect Count",
+        icon="mdi:connection",
+    )
+    assert reconnect_sensor.native_value == 3
+
+    # Test total messages sensor
+    messages_sensor = AzimutDiagnosticSensor(
+        coordinator=mock_coordinator,
+        serial="ABC123",
+        sensor_type="total_messages",
+        name="MQTT Messages Received",
+        icon="mdi:message-processing",
+    )
+    assert messages_sensor.native_value == 250
+
+    # Test sensor count sensor
+    count_sensor = AzimutDiagnosticSensor(
+        coordinator=mock_coordinator,
+        serial="ABC123",
+        sensor_type="sensor_count",
+        name="Discovered Sensors",
+        icon="mdi:counter",
+    )
+    assert count_sensor.native_value == 0
+
+    # Increment sensor count
+    count_sensor.increment_sensor_count()
+    assert count_sensor.native_value == 1
+
+
+async def test_diagnostic_sensor_properties(
+    hass: HomeAssistant,
+    mock_coordinator: MagicMock,
+) -> None:
+    """Test diagnostic sensor properties."""
+    from homeassistant.helpers.entity import EntityCategory
+    from custom_components.azimut_energy.sensor import AzimutDiagnosticSensor
+
+    mqtt_client = MagicMock()
+    mqtt_client.reconnect_count = 0
+    mock_coordinator.mqtt_client = mqtt_client
+
+    sensor = AzimutDiagnosticSensor(
+        coordinator=mock_coordinator,
+        serial="ABC123",
+        sensor_type="reconnect_count",
+        name="MQTT Reconnect Count",
+        icon="mdi:connection",
+    )
+    sensor.hass = hass
+
+    # Check properties
+    assert sensor.unique_id == "azen_ABC123_reconnect_count"
+    assert sensor.name == "MQTT Reconnect Count"
+    assert sensor.icon == "mdi:connection"
+    assert sensor.entity_category == EntityCategory.DIAGNOSTIC
+    assert sensor.available is True
+
+    # Check device info
+    assert sensor.device_info is not None
+    assert (DOMAIN, "azen_ABC123") in sensor.device_info["identifiers"]
+    assert sensor.device_info["name"] == "Azen ABC123"
+
+
+async def test_sensor_count_increments_on_discovery(
+    hass: HomeAssistant,
+    mock_coordinator: MagicMock,
+    sample_discovery_payload: dict,
+) -> None:
+    """Test sensor count increments when new sensors are discovered."""
+    from custom_components.azimut_energy.sensor import async_setup_entry
+
+    entry = MagicMock()
+    entry.data = {CONF_SERIAL: "ABC123"}
+    entry.entry_id = "test_entry"
+
+    hass.data[DOMAIN] = {entry.entry_id: mock_coordinator}
+
+    # Add mqtt_client
+    mqtt_client = MagicMock()
+    mqtt_client.reconnect_count = 0
+    mqtt_client.total_messages_received = 0
+    mock_coordinator.mqtt_client = mqtt_client
+
+    callbacks = {}
+    mock_coordinator.set_discovery_callback.side_effect = lambda cb: callbacks.update(
+        {"discovery": cb}
+    )
+    mock_coordinator.set_state_callback.side_effect = lambda cb: None
+    mock_coordinator.set_connection_callback.side_effect = lambda cb: None
+
+    add_entities_mock = MagicMock()
+    await async_setup_entry(hass, entry, add_entities_mock)
+
+    # Get the sensor count diagnostic sensor
+    diagnostic_sensors = add_entities_mock.call_args[0][0]
+    sensor_count_diag = next(s for s in diagnostic_sensors if s._sensor_type == "sensor_count")
+
+    # Initial count should be 0
+    assert sensor_count_diag.native_value == 0
+
+    # Discover a sensor
+    callbacks["discovery"](sample_discovery_payload)
+
+    # Count should increment
+    assert sensor_count_diag.native_value == 1
+
+    # Discover another sensor
+    payload2 = sample_discovery_payload.copy()
+    payload2["unique_id"] = "azen_ABC123_battery_voltage"
+    callbacks["discovery"](payload2)
+
+    # Count should increment again
+    assert sensor_count_diag.native_value == 2
