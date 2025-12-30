@@ -12,6 +12,12 @@ Home Assistant integration for Azimut Energy Systems (Azen). Monitor your energy
 > The firmware update with MQTT support is **planned for early January 2026**.
 > This integration will not work until your Azimut Energy System is updated to the new firmware.
 
+> **ℹ️ Support Notice**
+> This integration is provided by Azimut Energy to enable sensor monitoring in Home Assistant.
+> However, **Azimut Energy does not provide support for Home Assistant configurations or setup**.
+> This integration solely exposes sensor data to Home Assistant - any questions about Home Assistant usage, automations, or dashboards should be directed to the [Home Assistant Community](https://community.home-assistant.io/).
+> For integration-specific issues, use [GitHub Issues](https://github.com/azimut/azimut-ha-integration/issues).
+
 ## Features
 
 - **Automatic device discovery** - Devices are discovered via mDNS (Zeroconf) on your local network
