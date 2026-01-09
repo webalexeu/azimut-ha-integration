@@ -1,8 +1,8 @@
 # Azimut Energy
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![CI](https://github.com/azimut/azimut-ha-integration/actions/workflows/ci.yml/badge.svg)](https://github.com/azimut/azimut-ha-integration/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)](https://github.com/azimut/azimut-ha-integration)
+[![CI](https://github.com/azimut-energy/azimut-ha-integration/actions/workflows/ci.yml/badge.svg)](https://github.com/azimut-energy/azimut-ha-integration/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)](https://github.com/azimut-energy/azimut-ha-integration)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Home Assistant integration for Azimut Energy Systems (Azen). Monitor your energy system including grid, battery, solar, and consumption data in real-time.
@@ -460,7 +460,7 @@ This project follows:
 For support, please:
 1. Check the troubleshooting section above
 2. Download diagnostics and enable debug logging
-3. Open an issue in the [GitHub repository](https://github.com/azimut/azimut-ha-integration) with:
+3. Open an issue in the [GitHub repository](https://github.com/azimut-energy/azimut-ha-integration) with:
    - Home Assistant version
    - Integration version
    - Diagnostics file
