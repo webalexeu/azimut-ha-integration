@@ -16,7 +16,7 @@ Home Assistant integration for Azimut Energy Systems (Azen). Monitor your energy
 > This integration is provided by Azimut Energy to enable sensor monitoring in Home Assistant.
 > However, **Azimut Energy does not provide support for Home Assistant configurations or setup**.
 > This integration solely exposes sensor data to Home Assistant - any questions about Home Assistant usage, automations, or dashboards should be directed to the [Home Assistant Community](https://community.home-assistant.io/).
-> For integration-specific issues, use [GitHub Issues](https://github.com/azimut/azimut-ha-integration/issues).
+> For integration-specific issues, use [GitHub Issues](https://github.com/azimut-energy/azimut-ha-integration/issues).
 
 ## Features
 
@@ -44,7 +44,7 @@ Home Assistant integration for Azimut Energy Systems (Azen). Monitor your energy
 1. Make sure you have [HACS](https://hacs.xyz/) installed
 2. Add this repository as a custom repository in HACS:
    - Go to HACS → Integrations → ⋮ (menu) → Custom repositories
-   - Add URL: `https://github.com/azimut/azimut-ha-integration`
+   - Add URL: `https://github.com/azimut-energy/azimut-ha-integration`
    - Category: Integration
 3. Search for "Azimut Energy" in HACS
 4. Click Install
